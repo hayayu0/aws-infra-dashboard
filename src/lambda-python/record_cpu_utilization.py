@@ -12,17 +12,13 @@ import datetime
 import time
 import re
 import boto3
-import urllib.parse
 
 S3_BUCKET = os.getenv('S3_BUCKET')
 
-SUPPORTED_REGION_REGEXP = r'^(us-(east|west)-[12]|ap-(northeast-[123]|southeast-[12]|south-1)|eu-(central-1|west-[123]|north-1)|ca-central-1|sa-east-1)$'
 REGION_LIST = [
     x for x in re.split(r'[, ]+', os.getenv('REGION_LIST') or os.getenv('AWS_REGION') or 'ap-northeast-1')
-    if re.match(SUPPORTED_REGION_REGEXP, x)
+    if re.match(r'^(us-(east|west)-[12]|ap-(northeast-[123]|southeast-[12]|south-1)|eu-(central-1|west-[123]|north-1)|ca-central-1|sa-east-1)$', x)
 ]
-
-TIMEZONE_OFFSET = int(os.getenv('TIMEZONE_OFFSET', '9'))
 
 S3 = boto3.resource('s3')
 
@@ -30,13 +26,14 @@ S3 = boto3.resource('s3')
 # 最大データポイント(100800) ÷ 24時間5分(289)
 INSTANCES_PER_GET = 348
 
+
 # ================
 def lambda_handler(event, context):
 
-    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=TIMEZONE_OFFSET)))
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
 
     # 開始日時と終了日時とファイル名の日付
-    ymd = start_end_ymd(now)
+    ymd = start_end_ymd(now_utc)
 
     # 対象日時をログに出力
     print(ymd)
@@ -45,16 +42,27 @@ def lambda_handler(event, context):
 
     for region in REGION_LIST:
         try:
-            output[region] = record_region(region, ymd, now)
+            output[region] = record_cpu_in_region(region, ymd)
         except Exception as e:
             output[region] = { 'result': 'ng', 'message': format(e) }
 
     return { 'result': output }
 
+# ----------------
+def escape_name_for_safe(name):
+
+    escaped = []
+    safe_name_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-')
+
+    for byte in str(name).encode('utf-8'):
+        char = chr(byte)
+        escaped.append(char if char in safe_name_chars else f'~{byte:02X}')
+
+    return ''.join(escaped)
 
 # ----------------
 # 指定リージョンのCPU使用率を記録
-def record_region(region, ymd, now):
+def record_cpu_in_region(region, ymd):
 
     ec2 = boto3.client('ec2', region_name=region)
     rds = boto3.client('rds', region_name=region)
@@ -156,27 +164,27 @@ def record_region(region, ymd, now):
     for d in result_merge:
 
         target = target_by_query_id.get(d['Id'], { 'resource_id': d.get('Label', d['Id']), 'name': d.get('Label', d['Id']) })
-        name = target['name']
-        key_name = name.replace(' ', '')
+        key_name = target['name']
 
         # データを5分おきの0:00～23:59の適切な位置に配置し、CPU使用率を整数値にする
         cpus = rearrange_cpus(d['Timestamps'], d['Values'])
 
-        data_by_name[key_name] = cpus
+        if key_name not in data_by_name:
+            data_by_name[key_name] = {}
+        data_by_name[key_name][target['resource_id']] = cpus
 
-    s3_start = str(now.strftime('%H:%M:%S'))
+    s3_start = str(datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S'))
 
-    for key_name, cpus in data_by_name.items():
+    for key_name, cpus_by_resource_id in data_by_name.items():
 
         #S3に保存
-        key_name_for_s3 = urllib.parse.quote(key_name, safe='')
-        S3.Object(S3_BUCKET, f"lambda/cpu-utilization/{region}/{ymd['file']}/{ymd['file']}_{key_name_for_s3}.json").put(Body = json.dumps({key_name: cpus}, ensure_ascii=False))
+        key_name_for_s3 = escape_name_for_safe(key_name)
+        S3.Object(S3_BUCKET, f"lambda/cpu-utilization/{region}/{ymd['ymd_str'][:4]}/{ymd['ymd_str'][4:6]}/{ymd['ymd_str'][6:8]}/{ymd['ymd_str']}_{key_name_for_s3}.json").put(Body = json.dumps(cpus_by_resource_id, ensure_ascii=False))
         time.sleep(0.02)
 
-    print('s3 put start ' + s3_start + ' end ' + str(now.strftime('%H:%M:%S')))
+    print(f's3 put start {s3_start} end ' + str(datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')) + f' region {region}')
 
     return { 'result': 'ok' }
-
 
 # ----------------
 # EC2インスタンスIDとNameタグの対応を取得
@@ -188,16 +196,15 @@ def get_ec2_name_by_id(ec2):
     for page in ec2.get_paginator('describe_instances').paginate():
         for resv in page.get('Reservations', []):
             for inst in resv.get('Instances', []):
-                name_tag = (next((tag.get('Value') for tag in inst.get('Tags', []) if tag.get('Key') == 'Name'), None) or '').replace(' ', '')
+                name_tag = next((tag.get('Value') for tag in inst.get('Tags', []) if tag.get('Key') == 'Name'), None) or ''
                 if name_tag:
                     ec2_name_by_id[ inst['InstanceId'] ] = name_tag
 
     return ec2_name_by_id
 
-
 # ----------------
 # RDS DB識別子とNameタグの対応を取得
-# 戻り値: { 'rdsxxxxx': 'Nameタグの値', ... } の形式のdict
+# 戻り値: { 'DBインスタンスID': 'Nameタグの値', ... } の形式のdict
 def get_rds_name_by_id(rds):
 
     # DescribeDBInstances APIを実行してRDSの情報を取得
@@ -205,15 +212,14 @@ def get_rds_name_by_id(rds):
     for page in rds.get_paginator('describe_db_instances').paginate():
         for inst in page['DBInstances']:
             name_tag = next((tag.get('Value') for tag in inst.get('TagList', []) if tag.get('Key') == 'Name'), None)
-            rds_name_by_id[ inst['DBInstanceIdentifier'] ] = (name_tag or '').replace(' ', '') or inst['DBInstanceIdentifier']
+            rds_name_by_id[ inst['DBInstanceIdentifier'] ] = name_tag or inst['DBInstanceIdentifier']
 
     return rds_name_by_id
-
 
 #-------------------
 # get_metric_data で取得した'Timestamps'と'Values'から5分おきのCPU使用率(整数)のリストを生成する
 # OSが停止中の場合は'-'となる(EC2のローンチ前の時間帯、EC2のTerminated後、一時的な収集失敗時も'-')
-# 例：['-','-','-',4,5,0,2,12,26,51,91,52,18, ・・・,2,3,'-','-','-']
+# 戻り値の例：['-','-','-',4,5,0,2,12,26,51,91,52,18, ・・・,2,3,'-','-','-']
 def rearrange_cpus(ts_list, cpu_val_list):
 
     # 24時間分(5分間隔)を'-'で初期化
@@ -221,38 +227,26 @@ def rearrange_cpus(ts_list, cpu_val_list):
 
     for i, (ts, cpu_val) in enumerate(zip(ts_list, cpu_val_list)):
 
-        if type(ts) is datetime.datetime: 
-            timeid = int( (((ts.hour + TIMEZONE_OFFSET) % 24) * 12 + ts.minute / 5) )
+        if type(ts) is datetime.datetime:
+            ts_utc = ts.astimezone(datetime.timezone.utc) if ts.tzinfo else ts
+            timeid = int( ts_utc.hour * 12 + ts_utc.minute / 5 )
             retlist[timeid] = round(cpu_val)
 
-    # *特別対応*  先頭(0:00-0:05)が数字で2番目(0:05-0:10)が"-"の場合、
-    # 23:55-24:00のデータが折り返されている可能性を考慮して先頭を"-"に修正する
-    if type(retlist[0]) is int and retlist[1] == '-':
-        retlist[0] = '-'
-
-    #整数のCPU使用率に変換したリストを返す
     return retlist
-
 
 #--------------------
 # 開始日時・終了日時・ファイル名の日付を返す
-def start_end_ymd(now):
+def start_end_ymd(now_utc):
 
-    # ローカル時刻0時20分までは前日分、0時20分以降は当日分を取得
-    # ローカル日付の0:00を起点とし、取得範囲の終了時刻は現在時刻の約1時間後にする
-
-    is_today = (now.hour, now.minute) >= (0, 20)
-    target_date = now.date() if is_today else (now - datetime.timedelta(days=1)).date()
-    start_local = datetime.datetime.combine(target_date, datetime.time())
-    end_limit_local = start_local + datetime.timedelta(days=1, minutes=4, seconds=59)
-    end_local = min(now.replace(minute=4, second=59, microsecond=0) + datetime.timedelta(hours=1), end_limit_local) if is_today else end_limit_local
-    start_utc = start_local - datetime.timedelta(hours=TIMEZONE_OFFSET)
-    end_utc = end_local - datetime.timedelta(hours=TIMEZONE_OFFSET)
-
-    end_ymd = start_local + datetime.timedelta(days=1)
+    is_today = (now_utc.hour, now_utc.minute) >= (0, 20)
+    target_date = now_utc.date() if is_today else (now_utc - datetime.timedelta(days=1)).date()
+    start_utc = datetime.datetime.combine(target_date, datetime.time(), tzinfo=datetime.timezone.utc)
+    end_limit_utc = start_utc + datetime.timedelta(days=1)
+    next_5min_utc = (now_utc + datetime.timedelta(minutes=5)).replace(second=0, microsecond=0)
+    end_utc = min(next_5min_utc, end_limit_utc) if is_today else end_limit_utc
 
     return {
         'start': start_utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
         'end': end_utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
-        'file': str(end_ymd.year * 10000 + end_ymd.month * 100 + end_ymd.day)
+        'ymd_str': str(start_utc.year * 10000 + start_utc.month * 100 + start_utc.day)
     }

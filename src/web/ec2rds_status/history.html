@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<title>History - EC2/RDS on/off</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.6/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="../common_script/utils.css">
+<link rel="stylesheet" href="./script/ec2rds.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.2.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.2.6/js/buttons.html5.min.js"></script>
+<script src="../common_script/config.js?"></script>
+<script src="../common_script/utils.js"></script>
+<script src="../common_script/accounts.js"></script>
+<script src="./script/ec2rds.js"></script>
+<script>
+let darkselector = '.spanLink, .statusCellRun, #dispComputerInfo';
+</script>
+
+<body onload="onLoad('history.html')">
+
+<div><noscript>Error! Javascript disabled.</noscript></div>
+
+<div class="HeaderBarBlock"><!-- HeaderBar Block -->
+  <div class="BarDisp">
+
+	<div class="HeaderTitleBlock flexcontainer"><!-- Header Title Block -->
+
+		<img class="Header_Icon_Mini" src="../common_script/images/historylink.png">
+		<div id="TitleAccountIcon"></div>
+		<div id="Title" class="TitleText"><span id="TitleInstance"></span>稼働履歴</div>
+
+	</div>
+
+	<div class="HeaderControlBlock flexcontainer"><!-- Header Control Block -->
+
+		<div id="darkbtn"></div>
+
+	</div>
+
+  </div>
+</div>
+
+<div id="MainBlock" class="HeaderMargin"><!-- Main Block -->
+
+	<div id="ControlBlock"><!-- Control Block  -->
+
+		<div id="DateHanrei">
+			<div id="dispComputerInfo"><span><span id="computername_val" class="toClip"></span></span></div>
+			<div id="hanrei">
+			</div>
+			<div id="btnMonthContainer">
+				<span class="sp"></span>
+				<button id="btn_prev6month" class="maruButton monthButton" disabled="disabled">↓↓ -6ヶ月</button>
+				<button id="btn_prev2month" class="maruButton monthButton" disabled="disabled">↓ -2ヶ月</button>
+				<button id="btn_thismonth" class="maruButton monthButton" disabled="disabled">再読込</button>
+				<button id="btn_next2month" class="maruButton monthButton" disabled="disabled">↑ +2ヶ月</button>
+				<button id="btn_next6month" class="maruButton monthButton" disabled="disabled">↑↑ +6ヶ月</button>
+			</div>
+		</div>
+
+	</div>
+
+	<div id="loading"></div>
+
+	<div id="Main">
+		<table id="statTable" class="cell-border" width="100%" data-page-length="100"></table>
+	</div>
+
+</div>
+
+</body></html>
