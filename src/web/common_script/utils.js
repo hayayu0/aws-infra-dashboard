@@ -11,6 +11,8 @@ if(!window.appConfig){
 	throw new Error('config.js must be loaded before utils.js');
 }
 
+const demoNow = window.appConfig.demo?.now || null;
+
 const toolConfig = {
 
 	regions: [
@@ -47,26 +49,28 @@ const createLocalStorageKey = (key) => reversePath[1] + '-' + reversePath[0].spl
 const urlHome = document.currentScript.src.replace(/(.*)\:\/\/(.*?)\/(.*)\/(.*?)\/(.*)$/, '/$3');
 
 const requestedAccountForRegions = new URLSearchParams(window.location.search).get('account');
-const accountConfigForRegions = window.appConfig.accounts?.[requestedAccountForRegions] || window.appConfig.accounts?.['1'] || {};
-const configuredRegionIds = accountConfigForRegions.regions;
-const availableRegions = Array.isArray(configuredRegionIds) && configuredRegionIds.length > 0
-	? configuredRegionIds.map(regionId => toolConfig.regions.find(region => region.id === regionId) || { id:regionId, grp:'', location:regionId }).filter(region => region.id)
-	: toolConfig.regions;
-const selectedRegionIdsFromUrl = (() => {
-	const regionParam = new URLSearchParams(window.location.search).get('region');
-	if(!regionParam) return [];
-	return regionParam.split(',').map(v => v.trim()).filter(v => v);
+const accountConfigsForRegions = window.appConfig.accounts || {};
+const accountConfigForRegions = accountConfigsForRegions[requestedAccountForRegions] || accountConfigsForRegions['1'] || {};
+const configuredRegionIds = Object.values(accountConfigsForRegions).flatMap(accountConfig => Array.isArray(accountConfig.regions) ? accountConfig.regions : []);
+const ownRegionId = (() => {
+	const ownRegions = Array.isArray(accountConfigForRegions.regions) ? accountConfigForRegions.regions : [];
+	return ownRegions[accountConfigForRegions.instanceRegionId || 0] || ownRegions[0] || toolConfig.regions[window.appConfig.defaultRegionId]?.id || toolConfig.regions[0]?.id || '';
 })();
-const createSelectedRegions = (regionIds) => {
-	const selected = [];
-	regionIds.forEach((regionId) => {
-		const region = availableRegions.find(v => v.id === regionId);
-		if(region && !selected.some(v => v.id === region.id)) selected.push(region);
-	});
-	return (selected.length > 0) ? selected : availableRegions.slice();
-};
-let regions = createSelectedRegions(selectedRegionIdsFromUrl);
-let regionId = Math.min(window.appConfig.defaultRegionId, Math.max(regions.length - 1, 0));   // 設定された既定リージョンで初期化
+const availableRegionIds = [...new Set([...configuredRegionIds, ownRegionId].filter(v => v))];
+const availableRegions = (availableRegionIds.length > 0 ? availableRegionIds : toolConfig.regions.map(region => region.id))
+	.map(regionId => toolConfig.regions.find(region => region.id === regionId) || { id:regionId, grp:'', location:regionId })
+	.filter(region => region.id);
+const selectedRegionIdFromUrl = (() => {
+	const regionParam = new URLSearchParams(window.location.search).get('region');
+	return regionParam ? regionParam.trim() : '';
+})();
+const createSelectedRegions = (regionIds) => availableRegions.filter(region => regionIds.includes(region.id));
+let regions = availableRegions.slice();
+let regionId = Math.max(regions.findIndex(region => region.id === ownRegionId), 0);   // 自アカウントの既定リージョンで初期化
+if(selectedRegionIdFromUrl){
+	const urlRegionIndex = regions.findIndex(region => region.id === selectedRegionIdFromUrl);
+	if(urlRegionIndex >= 0) regionId = urlRegionIndex;
+}
 
 // Nameタグ(tagname)のフィルター(正規表現文字列)
 let tagnameFilter = window.appConfig.tagnameFilter;
@@ -117,9 +121,7 @@ let dk_slrdef = toolConfig.darkMode.defaultColorSelectors;
 let tblcolCache = null;
 
 // 現在日時
-const demoToday = new Date(2026, 6-1, 18, 16, 0, 0);   // null or new Date(yyyy, mm, dd, HH, MM, SS)
-const _today = demoToday || new Date();
-const _yyyymmdd = _today.getFullYear() * 10000 + (_today.getMonth() + 1) * 100 + _today.getDate();
+const _today = demoNow || new Date();
 
 // Darkモード状態(local storageから読み出して初期化)
 const darkSwitch = localStorage.getItem('dark');
@@ -187,7 +189,16 @@ util.updateTagnameFilter = (filter, opt) => {
 // 例: "<div><p>text123</p></div>" → "text123"
 // -------------------------------------------------------------
 util.removeTag = (str) => {
-	return str.toString().replace(/<[^>]*>/g,'');
+	return str.toString().replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/ig,'').replace(/<[^>]*>/g,'');
+}
+
+
+// -------------------------------------------------------------
+// Excel出力用にセル値を整形する
+// -------------------------------------------------------------
+util.formatExcelExportBody = (dat) => {
+	const str = (typeof dat === 'string') ? dat.replace(/<br>/ig, '\r\n') : dat;
+	return util.removeTag(str).replace(/^0([0-9][%％])$/, '$1');
 }
 
 
@@ -197,23 +208,6 @@ util.removeTag = (str) => {
 util.escapeHTML = (str) => {
 	if (typeof str !== 'string') return '';
 	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
-
-
-// -------------------------------------------------------------
-// 環境タグの値から画面表示用の環境名を返す
-// envValue: 環境タグ値
-// nomatchStr: 値が空の場合に返す文字列を指定
-// -------------------------------------------------------------
-util.envToDisplayEnv = (envValue, nomatchStr = '-') => {
-
-	// 環境の表示名 (environmentList の tagEnv → display を逆引き)
-	if(!envValue) return nomatchStr;
-
-	const list = window.appConfig.environmentList;
-	const found = envValue ? Object.values(list).find(e => e.tagEnv === envValue) : null;
-
-	return found ? found.display : envValue;
 }
 
 
@@ -239,7 +233,7 @@ util.createDropdownDate = (selector, ago, maxago = 365) => {
 	}
 
 	html += '</select>';
-	target.innerHTML = html;
+	util.writeHtml(target, html);
 
     const select = target.querySelector('select');
 	if(!isNaN(ago) && ago >= 0 && select){   // URLパラメータdateで指定された日付を選択
@@ -311,7 +305,7 @@ util.saveControlToLocalStorage = (selobj, chkobj) => {
 
     let combinedSel = selobj || [];
 	// 引数に指定していなくてもドロップダウンがあれば保存するパラメータ
-	for(let sel of ['sel_svc', 'sel_env']){
+	for(let sel of ['sel_svc', 'sel_category']){
 		if(document.getElementById(sel)){
 			if(!combinedSel.includes(sel)) combinedSel.push(sel);
 		}
@@ -428,7 +422,7 @@ util.showHideColumnCheckBox = function(domid, tblcol, type){
 // opt.searchtable: 検索ボックスをURL履歴に含める場合のTableのセレクタ '#myTable'等
 // -------------------------------------------------------------
 util.replaceAddressBarURL = (urlparam, addhistoryflg, opt) => {
-	let newlocation = [ location.pathname , location.hash , '?' ];   // index.php, #xxxx, ?envIdx=0&svcIdx=0&
+	let newlocation = [ location.pathname , location.hash , '?' ];   // path, #xxxx, ?categoryIdx=0&svcIdx=0&
 	let searchcount = 0;
 
 	if(addhistoryflg){
@@ -475,6 +469,7 @@ util.replaceAddressBarURL = (urlparam, addhistoryflg, opt) => {
 		// 指定のURLパラメータが既存のURL内に存在しなかったので追加
 		if(!urlparam[i][2] && urlparam[i][1] !== ''){
 			newlocation[2] += ((searchcount>0) ? '&' : '') + urlparam[i][0] + '=' + encodeURIComponent( urlparam[i][1] );
+			searchcount++;
 		}
 	}
 
@@ -494,7 +489,7 @@ util.replaceAddressBarURL = (urlparam, addhistoryflg, opt) => {
 util.initReloadTableButton = (opt) => {
 
 	let sel = '#region_disp, #tagname_filter_textbox, #_check_nocache' + (opt.selector ? ', ' + opt.selector : '');
-	let sel_change = '#sel_svc, #sel_env' + (opt.selector_change ? ', ' + opt.selector_change : '');
+	let sel_change = '#sel_svc, #sel_category' + (opt.selector_change ? ', ' + opt.selector_change : '');
 
 	// コールバック関数のセット
 	if(opt.clickCallback){
@@ -606,7 +601,6 @@ util.dispFilterTagname = (tagname) => {
 	// 表示対象
 	return true;
 }
-util.dispFilterHostname = util.dispFilterTagname;
 
 
 // -------------------------------------------------------------
@@ -630,7 +624,7 @@ util.getUrlParameterAndLocalStorageToControl = (selobj, chkobj, opt = {}) => {
 
 	// 引数に指定していなくてもチェックするパラメータ
 	selobj['sel_svc'] = { 'param': 'svcIdx', 'regexp': serviceIndexRegexp }
-	selobj['sel_env'] = { 'param': 'envIdx', 'regexp': '[0-9]' }
+	selobj['sel_category'] = { 'param': 'categoryIdx', 'regexp': '[0-9]' }
 
 	// URLパラメータ
 	let locationSearch = ( $(location).attr('search').substring('?') ) ? $(location).attr('search').split('?')[1].split('&') : [];
@@ -658,7 +652,7 @@ util.getUrlParameterAndLocalStorageToControl = (selobj, chkobj, opt = {}) => {
 		});
 
 		if(resultval !== null){
-			// #sel_svcと#sel_envの準備完了後にtrigger発火が必要なため遅延させる
+			// #sel_svcと#sel_categoryの準備完了後にtrigger発火が必要なため遅延させる
 			setTimeout(() => { $('#' + k).prop('selectedIndex', resultval).trigger('change');  }, 250);
 		}
 
@@ -754,11 +748,11 @@ util.DataTableWrap = (tbl, opt) => {
 	if(opt.buttontype){
 		opt.buttons = [ { extend:'copyHtml5', title:null } ];
 		if(opt.buttontype.length == 1){
-			opt.buttons.push( { extend:'excelHtml5', text:'Excel出力', filename:opt.buttontype[0], title:null, exportOptions: { format: { body: function(dat, col, row){ return (typeof dat === 'string' ? util.removeTag(dat.replace(/<br>/ig, '\r\n')) : util.removeTag(dat) ) } } } } );
+			opt.buttons.push( { extend:'excelHtml5', text:'Excel出力', filename:opt.buttontype[0], title:null, exportOptions: { format: { body: function(dat, col, row){ return util.formatExcelExportBody(dat) } } } } );
 		}
 		else if(opt.buttontype.length === 2){
-			opt.buttons.push( { extend:'excelHtml5', text:'Excel出力（表示列のみ）', filename:opt.buttontype[0], title:null, exportOptions: { columns:':visible', format: { body: function(dat, col, row){ return (typeof dat === 'string' ? util.removeTag(dat.replace(/<br>/ig, '\r\n')) : util.removeTag(dat) ) } } } } );
-			opt.buttons.push( { extend:'excelHtml5', text:'Excel出力（全ての列）', filename:opt.buttontype[1], title:null, exportOptions: { format: { body: function(dat, col, row){ return (typeof dat === 'string' ? util.removeTag(dat.replace(/<br>/ig, '\r\n')) : util.removeTag(dat) ) } } } } );
+			opt.buttons.push( { extend:'excelHtml5', text:'Excel出力（表示列のみ）', filename:opt.buttontype[0], title:null, exportOptions: { columns:':visible', format: { body: function(dat, col, row){ return util.formatExcelExportBody(dat) } } } } );
+			opt.buttons.push( { extend:'excelHtml5', text:'Excel出力（全ての列）', filename:opt.buttontype[1], title:null, exportOptions: { format: { body: function(dat, col, row){ return util.formatExcelExportBody(dat) } } } } );
 		}
 		delete opt.buttontype;
 	}
@@ -859,23 +853,6 @@ util.IsGroupTagFilterOk = (grpVal) => {
 
 
 // -------------------------------------------------------------
-// 文字列を簡易暗号化(可逆変換 難読化)
-// str: 暗号化されていない文字列
-// 戻り値：暗号化の結果
-// -------------------------------------------------------------
-util.strEncrypt = (str) => {
-
-	const slideNum = str.charCodeAt(str.length - 1) % 15 + 10;
-
-	// 文字列を生成(Base64, 英大文字をシーザー, URLエンコード, スライド量2桁をprefix, 等)
-	return slideNum + encodeURIComponent(
-		window.btoa(str).replace(/[A-Z]/g, (l) => {
-			return String.fromCharCode('A'.charCodeAt(0) + (l.charCodeAt(0)-'A'.charCodeAt(0) + slideNum) % 26);
-		})
-	);
-}
-
-
 // -------------------------------------------------------------
 // キャッシュ秒数を指定するURLパラメーターを生成する
 // 't=nnnnn' はWebブラウザのキャッシュへの対策 nnnnnはUNIX時間(秒)をsec*2で割った値
@@ -906,9 +883,9 @@ util.updateRegionDisp = (newRegionId) => {
 	}
 }
 
-util.getSelectedRegionIds = () => regions.map(region => region.id);
+util.getSelectedRegionIds = () => (regions[regionId]?.id ? [regions[regionId].id] : []);
 
-util.getSelectedRegionDispText = () => regions.map(region => region.location || region.id).join(', ');
+util.getSelectedRegionDispText = () => regions[regionId]?.location || regions[regionId]?.id || '';
 
 util.syncSelectedRegionsDisp = (triggerChange = true) => {
 	const regionText = util.getSelectedRegionDispText();
@@ -976,8 +953,6 @@ util.dbPromise = new Promise((resolve) => {
 //   header:true -> 実データ[0]とヘッダ[1] の配列を返す。ヘッダは Last-Modified取得用のみ。後続で get('Last-Modified') されてもいいように疑似処理。デフォルト値はfalse
 //   ignoreParams:['t'] -> URLの xxx.com/xxx.html?t=100&u=200&v=300 のうち t=100 を削った文字列をindexedDBのキーにする。デフォルト値は ['t', 'cache']
 util.cacheFetch = async (url, myOpt = {}) => {
-    const label = url.split('/').pop().split('?')[0] || url;
-    const startTime = performance.now();
 
     const config = {
         filetype: 'json', timeout: 1000, header: false, ignoreParams: ['t', 'cache'],
@@ -1141,29 +1116,24 @@ $(function(){
 		});
 	}
 
-	// 環境選択のドロップダウンを追加
-	if(document.querySelector('#SelEnvLabel')){
+	// タグ分類選択のドロップダウンを追加
+	if(document.querySelector('#SelCategoryLabel')){
 
-		const envList = window.appConfig.environmentList;
-		const envOpts = window.appConfig.environmentOptions;
+		const categoryTag = window.appConfig.categoryTag || {};
+		const categoryOpts = categoryTag.options || [];
 		let optHtml = '';
-		envOpts.forEach((eo) => {
-			optHtml += '<option value="' + eo.optValue + '">';
-			if(eo.optValue.indexOf('*') === 0){
-				optHtml += eo.dispOption || '全て';
-			}else{
-				optHtml += eo.dispOption || Object.keys(envList).filter(k => eo.optValue.includes(k)).map(k => envList[k].display).join('・');
-			}
+		categoryOpts.forEach((opt, idx) => {
+			optHtml += '<option value="' + idx + '">' + (opt.display || (opt.tagValues || []).join('・'));
 		});
 
-		$('#SelEnvLabel').after(
-			'<span id="sel_env_title">環境：</span>' + 
-			'<select id="sel_env" class="sel_pad">' + optHtml + '</select><span class="sp"></span>'
+		$('#SelCategoryLabel').after(
+			'<span id="sel_category_title">' + util.escapeHTML(categoryTag.label || '分類') + '：</span>' + 
+			'<select id="sel_category" class="sel_pad">' + optHtml + '</select><span class="sp"></span>'
 		);
 
 	}
 
-	// ページ表示＋'#sel_svc','#sel_env'の値セットから十分経過したと思われる時間(0.6秒)待ってから実行
+	// ページ表示＋'#sel_svc','#sel_category'の値セットから十分経過したと思われる時間(0.6秒)待ってから実行
 	// '#sel_svc'の場合は selectedSvcVal変数を更新
 	// ＃ 呼び出し元Javascriptで $('#sel_XXXX').trigger('change'); を実装し忘れた場合でも 0.6秒待ちさえすれば表示される
 	setTimeout(() => {
@@ -1257,7 +1227,7 @@ $(function(){
 				if(document.querySelector('.HeaderControlBlock')){
 					const tagnameFilterExampleOptions = [tagnameFilter].filter(v => v).map(v => '<option value="' + util.escapeHTML(v) + '">').join('');
 					$('.HeaderControlBlock').prepend(
-						'<span class="spR defcol nowrap">Name Filter</span><input type="text" id="tagname_filter_textbox" list="tagname_filter_example">' + 
+						'<span class="spR defcol nowrap">Nameタグフィルター</span><input type="text" id="tagname_filter_textbox" list="tagname_filter_example">' + 
 						'<datalist id="tagname_filter_example">' + tagnameFilterExampleOptions + '</datalist>'
 					);
 
@@ -1277,7 +1247,7 @@ $(function(){
 		if($('.ToolOptions').data('region') === 'multi'){
 			util.syncSelectedRegionsDisp(false);
 		}else{
-			util.updateRegionDisp(acc[accNo].instanceRegionId);
+			util.updateRegionDisp(regionId);
 		}
 	}
 

@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<title>EC2/RDS status</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.6/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="../common_script/utils.css">
+<link rel="stylesheet" href="./script/instance_status.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.2.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.2.6/js/buttons.html5.min.js"></script>
+<script src="../common_script/config.js"></script>
+<script src="../common_script/utils.js"></script>
+<script src="../common_script/accounts.js"></script>
+<script src="./script/instance_status.js"></script>
+<script>
+let darkselector = '.spanLink, .statusCellRun, #dispDate';
+</script>
+
+<body onload="onLoad('index.html')">
+
+<div><noscript>Error! Javascript disabled.</noscript></div>
+
+<div class="HeaderBarBlock"><!-- HeaderBar Block -->
+  <div class="BarDisp">
+
+	<div class="HeaderTitleBlock flexcontainer"><!-- Header Title Block -->
+
+		<img class="Header_Icon" src="../common_script/images/icon_instance_stat_top.png" style="width: 24px; height: 24px;">
+		<div id="Title" class="TitleText">インスタンス(<span id="TitleInstance"></span>)稼働状況</div>
+		<div id="Other_Account_Link"></div>
+	</div>
+
+	<div class="HeaderControlBlock flexcontainer"><!-- Header Control Block -->
+
+		<div class="TopLink"></div>
+		<div><span class="ToolOptions" data-region="yes" style="display:none"></span></div>
+		<div id="darkbtn"></div>
+
+	</div>
+
+  </div>
+</div>
+
+<div id="MainBlock" class="HeaderMargin"><!-- Main Block -->
+
+	<div id="ControlBlock"><!-- Control Block  -->
+
+		<span class="sp"></span>
+		<span id="SelSvcLabel"></span>
+
+		<span id="sel_oldday_title">日付：</span>
+		<button class="dayButton maruButton" data-olddate="minus">&lt;-1日</button>
+		<div id="sel_oldday_block" class="inblock"></div>
+		<button class="dayButton maruButton" data-olddate="plus">+1日&gt;</button>
+		<button id="btn_today" class="dayButton maruButton" data-olddate="today"> 今日 </button>
+
+		<span class="sp"></span><span id="SelCategoryLabel"></span>
+
+		<span id="account_disp_anchor"></span><br>
+
+		<span id="ColumnVisibleChecks">列ON/OFF：</span>
+		
+
+		<div id="DateHanrei">
+			<div id="dispDate"><span> / / ( )</span></div>
+			<span class="sp"></span>
+			<div id="hanrei"></div>
+		</div>
+
+	</div>
+
+	<div class="LoadingAni"></div>
+
+	<div id="Main">
+		<table id="statTable" class="cell-border" width="100%" style="visibility:hidden"></table>
+	</div>
+
+</div>
+
+</body></html>

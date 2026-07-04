@@ -7,19 +7,24 @@
 window.appConfig = {
     defaultRegionId: 0,
     timezoneOffset: 9,
+    demo: {
+        now: null
+    },
     tagnameFilter: ".*",
-    urlToolRoot: "https://xxxxxxxxxxxxxx.cloudfront.net/",
+    urlToolRoot: window.location.origin + "/",
     tablePageLengthOptions: [10, 20, 50, 100],
     defaultTablePageLength: 20,
     tableSortOrder: [[1, 'asc'], [0, 'asc']],
 
     messages: {
-        startstopLoadPossiblyFailed: "一部の稼働履歴を取得できず、表示内容が正しくない可能性があります。"
+        startstopLoadPossiblyFailed: "一部の稼働履歴を取得できなかったため、表示が正しくない可能性があります。"
     },
     labels: {
         reloadTableButton: "表示・更新",
-        statusImpaired: "System異常",
-        statusTerminated: "Terminated",
+        legendStopped: "停止済み",
+        legendRunning: "稼働中",
+        legendImpaired: "システム異常",
+        legendTerminated: "Terminated",
         serviceOptions: [
             { ec2Y_rdsY: 'EC2＆RDS' }
         ]
@@ -34,35 +39,25 @@ window.appConfig = {
 
     accounts: {
         "1": {
-            "titleBarPre": "[Account1]",
-            "selectAccountDisp": "アカウント1",
+            "selectAccountDisp": "アカ1",
             "instanceRegionId": 0,
-            "icon": "<img src=\"../common_script/images/accNo1.png\">",
             "instanceService": ["EC2", "RDS"],
-            "regions": [ "ap-northeast-1", "us-east-1" ],
-            "s3Dir": {
-                "lambda": "lambda",  "stored": "stored"
-            }
+            "regions": [ "ap-northeast-1", "ap-northeast-3" ],
+            "urlRoot": window.location.origin + "/"
         }
     },
 
-    // 環境(Env)の定義
-    // 環境分類に使うタグのキー (例: 'Env' や 'Environment')
-    tagKeys: { env: 'Env' },
-    // 文字キー → { tagEnv:タグ値, display:表示名 } (tagEnv を 'Production' 等へ編集可)
-    environmentList: {
-        p: { tagEnv: 'Production',  display: '本番' },
-        d: { tagEnv: 'Development', display: '開発' },
-        s: { tagEnv: 'Staging',     display: '検証' },
-        t: { tagEnv: 'Test',        display: 'テスト' }
+    // タグ分類列の定義。label/key/options を変更することで「環境」「システム」など任意の区分にできる
+    categoryTag: {
+        label: '環境',
+        key: 'Env',
+        options: [
+            { tagValues: ['Production','Development','Staging','Test'], display: '本番・開発・検証・テスト' },
+            { tagValues: ['Production'], display: '本番のみ' },
+            { tagValues: ['Development','Staging'], display: '開発・検証' },
+            { tagValues: ['Development','Staging','Test'], display: '開発・検証・テスト' },
+            { tagValues: ['*'], display: '全て(環境タグ無し含む)' }
+        ]
     },
-    // 環境フィルタのプリセット。ラベル既定は environmentList の display を '・' 連結 (例 'ds'→開発・検証)。dispOption で上書き可
-    environmentOptions: [
-        { optValue: 'psdt' },
-        { optValue: 'p',  dispOption: '本番のみ' },
-        { optValue: 'ds' },
-        { optValue: 'dst' },
-        { optValue: '*',      dispOption: '全て(環境タグ無し含む)' }
-    ],
 
 };

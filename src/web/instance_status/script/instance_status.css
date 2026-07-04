@@ -1,0 +1,80 @@
+
+.colorcel { margin:0 1px 0 0; }
+
+.statusCellRun{ font-weight:bold; color:#007a00; }
+
+.statusCellRun.dark{ color:#00b400; }
+
+.statusCellStop{ font-weight:bold; color:#1c1c1c; background-color:#ededed; }
+
+#ControlBlock{ z-index:10; margin:9px 0; }
+
+#DateHanrei{ position:relative; margin-top:6px; white-space:nowrap; }
+
+#dispDate{ font-weight:bold; font-size:17px; padding:3px 6px; margin:3px; display:inline-block; min-width:135px; border:1px solid #ccc; text-align:center; }
+#dispDate.dark{ border:1px solid #555; }
+
+.StartstopLoadWarning{ color:#7a4b00; background-color:#fef6d2; border:1px solid #d8b13f; margin:4px 0; padding:6px 10px; font-weight:bold; }
+
+.HistoryRepresentativeWarning{ color:#8a1f1f; background-color:#fff1f1; border:1px solid #d86b6b; margin:4px 0; padding:5px 10px; font-weight:bold; }
+
+#dispComputerInfo{ font-size:16px; font-weight:bold; background-color:#f2eff2; margin:4px 0; }
+#dispComputerInfo.dark{ background-color:#363236; color:#f9f9f9; }
+
+#hanrei{ font-size:13.5px; display:inline-block; margin:4px 0 0 42px; height:14px; }
+
+.btn_on_tr{ border-left:2px solid #e7e7e7; border-right:2px solid #e0e0e0; padding:0 4px; border-radius:2px; }
+
+#thBar24h{ min-width:360px; width:720px; }
+
+svg.svg_24h{
+   user-select: none;
+}
+svg.curtain{
+   animation: curtain-ani 1.2s ease-in-out forwards;
+}
+@keyframes curtain-ani {
+    0% { clip-path: inset(0 100% 0 0); filter: blur(4px); }
+    80% { clip-path: inset(0 0 0 0); filter: blur(1px); }
+    100% { clip-path: inset(0 0 0 0); filter: none; }
+}
+
+.bar24h_wrap{  display:flex;  }
+
+.cpu_graph_btns{ margin:2px; }
+
+table.dataTable > thead > tr > th,
+table.dataTable > thead > tr > td {
+	white-space: nowrap;
+	text-align: center;
+	padding-top: 4px;
+	padding-bottom: 4px;
+	padding-left: 1px;
+	padding-right: 1px;
+	margin: 0;
+}
+
+table.dataTable > tbody > tr > td {
+	white-space: nowrap;
+	min-width: 0px;
+	background-color: #f7f7f5;
+	padding-top: 4px;
+	padding-bottom: 4px;
+}
+
+#btnMonthContainer{ margin-top:16px; }
+
+.monthButton{ padding:6px 17px; background-color:#dcdcdc; }
+.monthButton:disabled{ background-color:#bbb; }
+
+.dayButton{ background-color:#ccc7c4; border: solid 1px #888594; }
+.dayButton:active{ background-color:#bdb8b5; transform: translateY(1px); }
+
+.Header_Icon_Mini{ width: 15px; height: 15px; padding: 5px 5px 1px 1px; }
+
+body {
+  font-family: 'Meiryo UI', 'Meiryo';
+  color: #353535;
+  background-color:#f9f9f7;
+  font-size: 12.5px;
+}

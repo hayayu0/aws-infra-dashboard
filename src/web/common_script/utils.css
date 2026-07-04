@@ -1,7 +1,7 @@
 body{
-  color: #333;
-  background-color:#f7f7f7;
-  font-size: 12px;
+  color: #353535;
+  background-color:#f6f6f3;
+  font-size: 12.5px;
 }
 
 .flexcontainer {
@@ -23,7 +23,7 @@ body{
 }
 
 .sp{
-  padding-left:16px;
+  padding-left:15px;
 }
 .spR{
   padding-right:8px;
@@ -50,8 +50,8 @@ body{
 .maruButton {
   border-radius:3px;
   margin:1px;
-  padding:3px 8px 3px 6px;
-  font-size:12px;
+  padding:3px 9px 3px 7px;
+  font-size:12.5px;
 }
 
 .sel_pad{
@@ -60,21 +60,21 @@ body{
 }
 
 .defcol{ color: #333; }
-.defcol.dark{ color: #eee; }
+.defcol.dark{ color: #ededed; }
 
 .red{ color:#ff4040; }
-.red.dark{ color:#f44; }
+.red.dark{ color:#f55; }
 
 .blue{ color:blue; }
-.blue.dark{ color:#55f; }
+.blue.dark{ color:#5b5bff; }
 
 .green{ color:#0a0; }
-.green.dark{ color:#0d0; }
+.green.dark{ color:#0c0; }
 
 .spanLink{ color:#0000dd; font-weight:bold; }
 .spanLink:hover{ color:#009999; cursor:pointer; }
-.spanLink.dark{ color:#7777ff; }
-td.dark .spanLink{ color:#7777ff; }
+.spanLink.dark{ color:#7b7bff; }
+td.dark .spanLink{ color:#7b7bff; }
 
 .b{ font-weight: bold; }
 
@@ -122,9 +122,19 @@ td.dark .spanLink{ color:#7777ff; }
 .fadeIn{ visibility:visible; opacity:1; }
 
 .fadeInBox{ z-index:100; position:absolute; padding:10px; border:1px solid #cccccc; background-color:#f0f0f0; top:25px; right:20px; white-space:nowrap; }
-.fadeInBox.dark{ border:1px solid #555555; background-color:#1a1a1a; }
+.fadeInBox.dark{ border:1px solid #555555; background-color:#191919; }
 
-.lastupdate{ font-size: 18px; margin-left:20px; float:left; }
+#AccountOptionBox{
+  width:fit-content;
+  min-width:200px;
+  max-width:calc(100vw - 16px);
+}
+#AccountOptionBoxMain, #sel_accounts{
+  width:max-content;
+  max-width:100%;
+}
+
+.lastupdate{ font-size: 17px; margin-left:22px; float:left; }
 
 /* For Dark mode */
 #dk_ck { display: none; }
@@ -136,7 +146,7 @@ td.dark .spanLink{ color:#7777ff; }
 #dk_ck:checked + label.check > div { border: 1px solid transparent; left: 34px; }
 #dk_t td span{ padding:0 4px; }
 
-.dark-switch-moon{ position: relative; top: -2px; margin: 0; padding: 0; width: 10px; height: 11px; border-radius: 50%; box-shadow: -2px 0 0 1px #eed200; }
+.dark-switch-moon{ position: relative; top: -2px; margin: 0; padding: 0; width: 10px; height: 11px; border-radius: 50%; box-shadow: -2px 0 0 1px #eed200; transform: rotate(-30deg); }
 
 /* Ready for combination of dataTables and DarkMode */
 .dt-button-info{
@@ -167,10 +177,10 @@ table.dataTable thead th.padLR{ padding:0 20px; }
   height: 40px;
   margin: 0;
   padding: 0;
-  background: linear-gradient(40deg, #203038 40%, #a3babd 65%);
+  background: linear-gradient(42deg, #050608 40%, #263238 66%);
 }
 .HeaderBarBlock.dark{
-  background: linear-gradient(40deg, #203038 40%, #233a3d 65%);
+  background: linear-gradient(42deg, #030405 40%, #172227 66%);
 }
 
 .HeaderBarBlock > .BarDisp{
@@ -179,7 +189,7 @@ table.dataTable thead th.padLR{ padding:0 20px; }
   z-index: 60;
   width: 99%;
   margin: 4px;
-  color: #eee;
+  color: #ececec;
 }
 
 .HeaderMargin{
@@ -191,7 +201,7 @@ table.dataTable thead th.padLR{ padding:0 20px; }
 }
 
 #Title{
-  font-size: 20px; font-weight:bold; float:left;
+  font-size: 19.5px; font-weight:bold; float:left; white-space: nowrap; overflow: hidden;
 }
 #TitleAccountIcon{
  margin:auto 4px;
@@ -219,12 +229,16 @@ table.dataTable thead th.padLR{ padding:0 20px; }
   height:2.1em; font-size:1.4em; background-color:#e5e7eb; padding-left:20px; padding-right:20px; margin:2px 0 2px 0; color:#111827; border:1px solid #6b7280; border-radius:4px; cursor:pointer;
 }
 
-#tool_options_open_btn{
+#tool_options_open_btn, #account_options_open_btn{
   font-weight:bold;  font-size:14px;  padding-left:10px; padding-right:10px; cursor:pointer;
 }
+#tool_options_open_btn{ color:#f0f0f0; }
 
-.OptionBoxCloseBtn{
+.OptionBoxCloseBtn, .AccountOptionBoxCloseBtn{
   float:right; padding:0 2px; font-size:1.7em; font-weight:bold; top:1px; right:1px; cursor:pointer;
+}
+.AccountOptionBoxCloseBtn{
+  position:relative; top:-4px;
 }
 
 #ToolOptionBox{
@@ -246,7 +260,7 @@ table.dataTable thead th.padLR{ padding:0 20px; }
 }
 
 #ColumnVisibleChecks{
-  margin-left: 20px; padding:4px; border:1px solid #ccc; visibility: hidden; white-space: nowrap;
+  display:inline-block; margin-top:5px; margin-left: 20px; padding:4px; border:1px solid #ccc; visibility: hidden; white-space: nowrap;
 }
 
 #ColumnVisibleChecks.dark{
