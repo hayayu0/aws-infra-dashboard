@@ -1,5 +1,5 @@
 {
-  "app": "npx tsx bin/instance-status.ts",
+  "app": "npx tsx bin/infra-dashboard.ts",
   "context": {
     "toolNamePrefix": "infra-dashboard",
     "accountId": "1",

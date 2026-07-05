@@ -122,7 +122,7 @@ CDKの実行が最後まで完了したことを確認します。
 デプロイ後、以下の URL にアクセスしてページが開くことを確認します。
 
 ```
-https://xxxxxxxxxx.cloudfront.net/web/instance_status/index.html
+https://xxxxxxxxxx.cloudfront.net/web/infra-dashboard/index.html
 ```
 
 以下を確認します。

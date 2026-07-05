@@ -112,7 +112,7 @@ Web画面の初期表示やタグ分類は `src/web/common_script/config.js` で
 
 CDKはTypeScriptで記述されています。
 
-- `bin/instance-status.ts`: CDKアプリのエントリポイント
+- `bin/infra-dashboard.ts`: CDKアプリのエントリポイント
 - `lib/local-stack.ts`: リージョン側リソース
 - `lib/global-stack.ts`: CloudFront/WAF側リソース
 - `src/web`: Web画面

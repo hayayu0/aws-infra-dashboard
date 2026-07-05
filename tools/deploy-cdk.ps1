@@ -307,7 +307,7 @@ Invoke-Cdk $globalDeployArgs
 $distributionId = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "CloudFrontDistributionId"
 $distributionArn = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "CloudFrontDistributionArn"
 $toolUrl = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "ToolUrl"
-$toolRootUrl = $toolUrl -replace '/web/instance_status/index\.html$', '/'
+$toolRootUrl = $toolUrl -replace '/web/infra-dashboard/index\.html$', '/'
 
 if (!$distributionArn -or $distributionArn -eq "None") {
     throw "CloudFrontDistributionArn output was not found."

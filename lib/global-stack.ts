@@ -222,7 +222,7 @@ export class GlobalStack extends cdk.Stack {
       }),
     });
     new cdk.CfnOutput(this, 'ToolUrl', {
-      value: cdk.Fn.sub('https://${DomainName}/web/instance_status/index.html', {
+      value: cdk.Fn.sub('https://${DomainName}/web/infra-dashboard/index.html', {
         DomainName: distribution.attrDomainName,
       }),
     });
