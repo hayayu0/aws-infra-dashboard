@@ -30,6 +30,7 @@ import boto3
 
 s3 = boto3.resource('s3')
 S3_BUCKET = os.getenv('s3_bucket', '')
+ACCOUNT_ID = (os.getenv('ACCOUNT_ID') or '').strip().strip('/')
 
 session = boto3.Session()
 
@@ -77,7 +78,14 @@ def build_s3_key(params, logtype=None):
     logtype: None(for cache), 'logonly'(for stored), 'ymd'(for stored with ymd)
     """
 
-    key_prefix = ('stored/' if logtype else 'cache/') + params['region'] + '/'
+    if logtype:
+        key_parts = ['stored']
+        if ACCOUNT_ID:
+            key_parts.append(ACCOUNT_ID)
+        key_parts.append(params['region'])
+    else:
+        key_parts = ['cache', params['region']]
+    key_prefix = '/'.join(key_parts) + '/'
     utc_now = datetime.utcnow()
     key_date = utc_now if logtype else utc_now + timedelta(hours=TIMEZONE_DELTA)
 

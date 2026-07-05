@@ -154,6 +154,7 @@ export class LocalStack extends cdk.Stack {
           source_cidr_list: '0.0.0.0/0 ::/0',
           s3_bucket: bucket.ref,
           default_region: props.regionalRegion,
+          ACCOUNT_ID: props.accountId,
         },
       },
       functionName: `${props.toolNamePrefix}-describe-api`,

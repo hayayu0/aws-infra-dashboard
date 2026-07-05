@@ -151,3 +151,54 @@ src/web/common_script/config.js
 
 編集後は、再度 CDK デプロイを実行して Web ファイルを反映してください。
 
+# 削除・後始末
+
+不要になった場合は、作成したAWSリソースを削除します。以下は既定の `infra-dashboard` / `ap-northeast-1` でデプロイした場合の例です。`ToolNamePrefix` や `RegionalRegion` を変えた場合は、同じ値に読み替えてください。
+
+まずS3バケット名を確認します。
+
+```powershell
+$ToolNamePrefix = "infra-dashboard"
+$RegionalRegion = "ap-northeast-1"
+$LocalStackName = "$ToolNamePrefix-local"
+$GlobalStackName = "$ToolNamePrefix-global"
+
+$BucketName = aws cloudformation describe-stacks `
+  --stack-name $LocalStackName `
+  --region $RegionalRegion `
+  --query "Stacks[0].Outputs[?OutputKey=='ToolBucketName'].OutputValue | [0]" `
+  --output text
+```
+
+CloudFront/WAF側のglobalスタックを削除します。
+
+```powershell
+npx cdk destroy $GlobalStackName `
+  --force `
+  --context toolNamePrefix=$ToolNamePrefix `
+  --context region=$RegionalRegion
+```
+
+S3バケットが空でないとlocalスタック削除に失敗するため、不要なデータであることを確認してからバケット内を空にします。
+
+```powershell
+aws s3 rm "s3://$BucketName" --recursive
+```
+
+最後にlocalスタックを削除します。
+
+```powershell
+npx cdk destroy $LocalStackName `
+  --force `
+  --context toolNamePrefix=$ToolNamePrefix `
+  --context region=$RegionalRegion
+```
+
+削除後は、CloudFormationで両方のスタックが消えていることを確認します。
+
+```powershell
+aws cloudformation describe-stacks --stack-name $GlobalStackName --region us-east-1
+aws cloudformation describe-stacks --stack-name $LocalStackName --region $RegionalRegion
+```
+
+削除済みであれば `does not exist` 系のエラーになります。あわせて、S3、CloudFront、Lambda、EventBridge Scheduler、WAFに対象リソースが残っていないことをAWSコンソールで確認してください。
