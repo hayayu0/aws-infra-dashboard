@@ -1,9 +1,7 @@
 ﻿﻿'use strict';
 
-// =============================================================
 // デプロイ/環境固有の必須設定 (window.appConfig)
 // 新しい環境へ展開する際は、このファイル内の値を編集する
-// =============================================================
 window.appConfig = {
     defaultRegionId: 0,
     timezoneOffset: 9,
@@ -58,6 +56,5 @@ window.appConfig = {
             { tagValues: ['Development','Staging','Test'], display: '開発・検証・テスト' },
             { tagValues: ['*'], display: '全て(環境タグ無し含む)' }
         ]
-    },
-
+    }
 };
