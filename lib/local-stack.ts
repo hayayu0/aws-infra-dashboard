@@ -277,8 +277,8 @@ export class LocalStack extends cdk.Stack {
       new scheduler.Schedule(this, `DescribeInstancesSchedule${regionId}`, {
         scheduleName: `${props.toolNamePrefix}-describe-api-ec2-describe-${regionName}`,
         schedule: scheduler.ScheduleExpression.cron({
-          minute: '59',
-          hour: '23',
+          minute: '55',
+          hour: '0,4,8,12,16,20',
           timeZone: scheduleTimeZone,
         }),
         target: new schedulerTargets.LambdaInvoke(describeTarget, {
@@ -292,8 +292,8 @@ export class LocalStack extends cdk.Stack {
       new scheduler.Schedule(this, `DescribeDbInstancesSchedule${regionId}`, {
         scheduleName: `${props.toolNamePrefix}-describe-api-rds-describe-${regionName}`,
         schedule: scheduler.ScheduleExpression.cron({
-          minute: '58',
-          hour: '23',
+          minute: '55',
+          hour: '0,4,8,12,16,20',
           timeZone: scheduleTimeZone,
         }),
         target: new schedulerTargets.LambdaInvoke(describeTarget, {
@@ -485,7 +485,6 @@ def lambda_handler(event, context):
       queryStringParameters: {
         api,
         region: regionName,
-        cache: 'never',
         logonly: '1',
       },
     };

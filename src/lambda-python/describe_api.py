@@ -78,10 +78,11 @@ def build_s3_key(params, logtype=None):
     """
 
     key_prefix = ('stored/' if logtype else 'cache/') + params['region'] + '/'
-    date_now = datetime.utcnow() + timedelta(hours=TIMEZONE_DELTA)
+    utc_now = datetime.utcnow()
+    key_date = utc_now if logtype else utc_now + timedelta(hours=TIMEZONE_DELTA)
 
     if logtype == 'ymd':
-        key_prefix += date_now.strftime('%Y/%m/')
+        key_prefix += key_date.strftime('%Y/%m/')
 
     key_prefix += params['api'].replace(':', '-')
 
@@ -89,7 +90,7 @@ def build_s3_key(params, logtype=None):
     arg_key = '_' + re.sub(r'[^\u0020-\u007E]', '', params.get('arg', ''))
 
     key_prefix += arg_key if len(arg_key) >= 2 else ''
-    key_prefix += date_now.strftime('_%Y%m%d') if logtype == 'ymd' else ''
+    key_prefix += key_date.strftime('_%Y%m%d') if logtype == 'ymd' else ''
 
     return f'{key_prefix}.json'
 

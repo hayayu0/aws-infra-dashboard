@@ -92,3 +92,50 @@ powershell版
   -Profile ""
 ```
 
+# デプロイ完了確認
+
+CDKの実行が最後まで完了したことを確認します。
+
+途中で `FAILED` や `ROLLBACK` が出た場合は、表示されたエラーを確認してから再実行してください。
+
+確認ポイントは以下です。
+
+- コマンドがエラー終了していないこと
+- CloudFormation のスタック作成または更新が完了していること
+- CloudFront の URL が出力されていること
+- `aws s3 sync` が失敗していないこと
+
+# Webページ確認
+
+デプロイ後、以下の URL にアクセスしてページが開くことを確認します。
+
+```
+https://xxxxxxxxxx.cloudfront.net/web/instance_status/index.html
+```
+
+以下を確認します。
+
+- ブラウザでページが開くこと
+- インスタンス一覧の画面が表示されること
+- アカウント、リージョン、タグの表示が想定どおりであること
+
+IP制限を有効にした場合は、許可したIPアドレスからアクセスしてください。
+
+# config.js の編集
+
+画面表示のデフォルト値やタグの扱いを変更したい場合は、必要に応じて以下を編集します。
+
+```
+src/web/common_script/config.js
+```
+
+たとえば、以下のような値を確認します。
+
+- `defaultRegionId`
+- `tablePageLengthOptions`
+- `defaultTablePageLength`
+- `groupTagFilter`
+- `categoryTag`
+
+編集後は、再度 CDK デプロイを実行して Web ファイルを反映してください。
+
