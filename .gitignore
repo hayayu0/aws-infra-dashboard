@@ -2,3 +2,5 @@ node_modules/
 cdk.out/
 dist/
 work/
+AGENTS.md
+CLAUDE.md

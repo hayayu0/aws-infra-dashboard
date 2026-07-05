@@ -1,14 +1,17 @@
-﻿# 必要ツールをインストールする
+﻿# 事前準備
 
-## 事前インストール対象
+## AWSアカウントのIAM設定
 
-事前に、以下をインストールしてセットアップしてください。
+AWS CLIで iam:CreateRole および iam:AttachRolePolicy 権限を付与するほどのIAMユーザーまたはロールが必要です。
+
+## 事前インストール
+
+開発環境に以下をインストールしてセットアップしてください。
 
 - git
 - Node.js / npm
 - AWS CLI
-
-## インストール確認
+  - `aws configure` で初期設定します。
 
 インストールされているかを以下のコマンドで確認します。
 
@@ -19,14 +22,14 @@ npm --version
 aws --version
 ```
 
-# リポジトリを配置
+# リポジトリをクローン
 
 ```
 cd <リポジトリを配置するディレクトリ>
 git clone https://github.com/hayayu0/aws-infra-dashboard aws-infra-dashboard
 ```
 
-# npm依存を入れる
+# npm依存をインストール
 
 ```
 cd aws-infra-dashboard
@@ -46,15 +49,12 @@ aws sts get-caller-identity
 
 CDKを使ってデプロイします。  
 CDKは上記の `npm ci` でインストールされています。  
-以下はフルオプションを付けた場合です。値はデフォルト値を記載しています。
+以下はフルオプションを付けた場合です。下記のコマンド例の値はデフォルト値を記載しています。
 
-- 複数リージョンがある場合は、regional-region にメインとしたいリージョン、other-regions にメイン以外をカンマ区切りで指定します。
-- Webツール上で、ドロップダウンで絞り込み切り替えたいタグを tag-category で指定します。
-- group-tag はクエリ文字列でフィルターに使いたいタグです。一覧にも列として表示されます。
-- enable-ip-allow-list を true にして allowed-ipv4-cidr / allowed-ipv6-cidr に値を入れることで、CloudFrontでIP制限できます。
-- tool-name-prefix はあちこちに埋め込まれるため後で変更不可ですが、他は config.js の編集や CloudFront の設定で変更できます。
+- tag-category-label は Web 画面上の分類ラベルです。
+- tag-category-selections は tag-category の選択肢をカンマ区切りで指定します。`*` は「全て(タグ無し含む)」になります。
 
-bash版 
+**フルオプションの例　bash版**
 
 ```bash
 ./tools/deploy-cdk.sh \
@@ -65,15 +65,16 @@ bash版
   --other-regions "" \
   --time-zone Asia/Tokyo \
   --tag-category Env \
-  --group-tag Application \
-  --web-root "./src/web" \
+  --tag-category-label "環境" \
+  --tag-category-selections "*" \
+  --tag-category2 Application \
   --enable-ip-allow-list false \
   --allowed-ipv4-cidr "" \
   --allowed-ipv6-cidr "" \
   --profile ""
 ```
 
-powershell版
+**フルオプションの例　Powershell版**
 
 ```powershell
 .\tools\deploy-cdk.ps1 `
@@ -84,13 +85,24 @@ powershell版
   -OtherRegions "" `
   -TimeZone Asia/Tokyo `
   -TagCategory Env `
-  -GroupTag Application `
-  -WebRoot ".\src\web" `
+  -TagCategoryLabel "環境" `
+  -TagCategorySelections "*" `
+  -TagCategory2 Application `
   -EnableIpAllowList false `
   -AllowedIpV4Cidr "" `
   -AllowedIpV6Cidr "" `
   -Profile ""
 ```
+
+オプション設定のポイント
+
+- オプションを1つも付与しなくても動作します。
+- `tool-name-prefix` はあちこちのリソースに埋め込まれるため、後で変更不可です。
+- 複数リージョンがある場合は、`regional-region` にメインとしたいリージョン、`other-regions` にメイン以外のリージョンをカンマ区切りで指定します。
+- Webツール上で、ドロップダウンで絞り込み切り替えたいタグを `tag-category` で指定します。
+- `tag-category2` はクエリ文字列でフィルターに使いたいタグです。一覧にも列として表示されます。
+- `enable-ip-allow-list` を true にして `allowed-ipv4-cidr` / `allowed-ipv6-cidr` に値を入れることで、CloudFront/WAFでIP制限できます。
+- `tag-category` を含むオプションはドロップダウンに関係します。特に `tag-category-selections` の値は `Production,Development,Staging,*` のようにカンマ区切りで指定しますが、デプロイ後に直接 config.js を直接編集してもよいです。
 
 # デプロイ完了確認
 

@@ -2,6 +2,7 @@
 'use strict';
 
 const acc = window.appConfig?.accounts || {};
+const hasMultipleAccounts = Object.keys(acc).length > 1;
 const requestedAccNo = new URLSearchParams(window.location.search).get('account');
 const accNo = (requestedAccNo && acc[requestedAccNo]) ? requestedAccNo : '1';
 const accountDisplayOptions = Object.entries(acc).filter(([k, v]) => k === accNo || !v.hideDropDown);
@@ -56,6 +57,14 @@ window.addEventListener('pageshow', (event) => {
 
 	const accountAnchor = document.querySelector('#account_disp_anchor');
 	if(accountAnchor){
+		if(!hasMultipleAccounts){
+			util.writeHtml(accountAnchor, '');
+			$('#AccountOptionBox').remove();
+			const titleLinkContainer = document.querySelector('#Other_Account_Link');
+			if(titleLinkContainer) util.writeHtml(titleLinkContainer, '');
+			return;
+		}
+
 		util.writeHtml(accountAnchor, 'アカウント：[<span id="account_options_open_btn" class="defcol"><span id="account_disp"></span><span style="font-size:0.6em;">▼</span></span>]');
 		document.querySelector('#account_disp').innerText = accountDisplayText();
 		if(!document.querySelector('#AccountOptionBox')){

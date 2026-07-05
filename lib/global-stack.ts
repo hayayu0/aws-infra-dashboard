@@ -213,9 +213,6 @@ export class GlobalStack extends cdk.Stack {
       },
     });
 
-    new cdk.CfnOutput(this, 'CloudFrontDomainName', {
-      value: distribution.attrDomainName,
-    });
     new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
       value: distribution.ref,
     });
@@ -224,17 +221,12 @@ export class GlobalStack extends cdk.Stack {
         DistributionId: distribution.ref,
       }),
     });
-    new cdk.CfnOutput(this, 'ToolRootUrl', {
-      value: cdk.Fn.sub('https://${DomainName}/', {
+    new cdk.CfnOutput(this, 'ToolUrl', {
+      value: cdk.Fn.sub('https://${DomainName}/web/instance_status/index.html', {
         DomainName: distribution.attrDomainName,
       }),
     });
-    new cdk.CfnOutput(this, 'LambdaApiUrl', {
-      value: cdk.Fn.sub('https://${DomainName}/api', {
-        DomainName: distribution.attrDomainName,
-      }),
-    });
-    new cdk.CfnOutput(this, 'SampleURL1', {
+    new cdk.CfnOutput(this, 'SampleApiUrl', {
       value: cdk.Fn.sub('https://${DomainName}/api?api=ec2:describe_availability_zones', {
         DomainName: distribution.attrDomainName,
       }),

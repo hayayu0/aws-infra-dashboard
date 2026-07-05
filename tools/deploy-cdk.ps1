@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ToolNamePrefix = "infra-dashboard",
     [string]$AccountId = "1",
     [string]$AccountDisplayName = "",
@@ -6,8 +6,9 @@ param(
     [string]$OtherRegions = "",
     [string]$TimeZone = "Asia/Tokyo",
     [string]$TagCategory = "Env",
-    [string]$GroupTag = "Application",
-    [string]$WebRoot = ".\src\web",
+    [string]$TagCategoryLabel = "環境",
+    [string]$TagCategorySelections = "*",
+    [string]$TagCategory2 = "Application",
     [string]$AllowedIpV4Cidr = "",
     [string]$AllowedIpV6Cidr = "",
     [ValidateSet("true", "false")]
@@ -112,7 +113,9 @@ function Update-WebConfig {
         [string[]]$Regions,
         [string]$TimeZoneName,
         [string]$TagCategoryKey,
-        [string]$GroupTagKey
+        [string]$TagCategoryLabel,
+        [string]$TagCategorySelections,
+        [string]$TagCategory2Key
     )
 
     if (!(Test-Path -LiteralPath $ConfigPath)) {
@@ -120,8 +123,23 @@ function Update-WebConfig {
     }
 
     $configText = [System.IO.File]::ReadAllText($ConfigPath, [System.Text.UTF8Encoding]::new($true))
-    $groupTagUrlKey = $GroupTagKey.ToLowerInvariant()
+    $newLine = if ($configText.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $tagCategory2UrlKey = $TagCategory2Key.ToLowerInvariant()
     $regionList = "[$(($Regions | ForEach-Object { ConvertTo-JsStringLiteral $_ }) -join ', ')]"
+    $categoryOptions = @()
+    foreach ($selection in $TagCategorySelections.Split(",")) {
+        $tagValue = $selection.Trim()
+        if ($tagValue -eq "") {
+            continue
+        }
+
+        $display = if ($tagValue -eq "*") { "全て(タグ無し含む)" } else { $tagValue }
+        $categoryOptions += "{ tagValues: [$(ConvertTo-JsStringLiteral $tagValue)], display: $(ConvertTo-JsStringLiteral $display) }"
+    }
+    if ($categoryOptions.Count -eq 0) {
+        $categoryOptions += "{ tagValues: ['*'], display: '全て(タグ無し含む)' }"
+    }
+    $categoryOptionsText = "[$newLine            $($categoryOptions -join ",$newLine            ")$newLine        ]"
     $timezoneOffset = Get-TimeZoneOffsetHours $TimeZoneName
     $accountRegex = [regex]::new('(?<key>"[^"]+")(?<suffix>\s*:\s*\{\s*\r?\n\s*"selectAccountDisp"\s*:\s*)[''"][^''"]*[''"]')
 
@@ -147,17 +165,27 @@ function Update-WebConfig {
     $configText = [regex]::Replace(
         $configText,
         "(groupTagFilter:\s*\{\s*\r?\n\s*key:\s*)['""][^'""]+['""]",
-        { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $GroupTagKey) }
+        { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $TagCategory2Key) }
     )
     $configText = [regex]::Replace(
         $configText,
         "(groupTagFilter:\s*\{(?:.|\r|\n)*?\r?\n\s*value:\s*['""][^'""]*['""],\s*\r?\n\s*keyURL:\s*)['""][^'""]+['""]",
-        { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $groupTagUrlKey) }
+        { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $tagCategory2UrlKey) }
+    )
+    $configText = [regex]::Replace(
+        $configText,
+        "(categoryTag:\s*\{(?:.|\r|\n)*?\r?\n\s*label:\s*)['""][^'""]+['""]",
+        { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $TagCategoryLabel) }
     )
     $configText = [regex]::Replace(
         $configText,
         "(categoryTag:\s*\{(?:.|\r|\n)*?\r?\n\s*key:\s*)['""][^'""]+['""]",
         { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $TagCategoryKey) }
+    )
+    $configText = [regex]::Replace(
+        $configText,
+        "(categoryTag:\s*\{(?:.|\r|\n)*?\r?\n\s*options:\s*)\[[\s\S]*?\r?\n\s*\}",
+        { param($match) $match.Groups[1].Value + $categoryOptionsText + "$newLine    }" }
     )
     $regionsRegex = [regex]::new('"regions":\s*\[[^\]]*\]')
     $configText = $regionsRegex.Replace($configText, "`"regions`": $regionList", 1)
@@ -189,10 +217,6 @@ function Get-DeployRegions {
     return $regions
 }
 
-if (!(Test-Path -LiteralPath $WebRoot)) {
-    throw "Web root not found: $WebRoot"
-}
-
 $deployRegions = Get-DeployRegions -PrimaryRegion $RegionalRegion -AdditionalRegions $OtherRegions
 
 $deployArgs = @(
@@ -222,14 +246,21 @@ $deployArgs += @(
 Invoke-Cdk $deployArgs
 
 $bucket = Get-StackOutput -Stack $localStackName -Region $RegionalRegion -OutputKey "ToolBucketName"
-$lambdaFunctionUrl = Get-StackOutput -Stack $localStackName -Region $RegionalRegion -OutputKey "DirectLambdaUrl"
+$lambdaFunctionUrl = aws @awsProfileArgs lambda get-function-url-config `
+    --function-name "$ToolNamePrefix-describe-api" `
+    --region $RegionalRegion `
+    --query "FunctionUrl" `
+    --output text
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to read Lambda function URL."
+}
 
 if (!$bucket -or $bucket -eq "None") {
     throw "ToolBucketName output was not found."
 }
 
 if (!$lambdaFunctionUrl -or $lambdaFunctionUrl -eq "None") {
-    throw "DirectLambdaUrl output was not found."
+    throw "Lambda function URL was not found."
 }
 
 $globalParameters = @(
@@ -275,10 +306,15 @@ Invoke-Cdk $globalDeployArgs
 
 $distributionId = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "CloudFrontDistributionId"
 $distributionArn = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "CloudFrontDistributionArn"
-$toolRootUrl = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "ToolRootUrl"
+$toolUrl = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "ToolUrl"
+$toolRootUrl = $toolUrl -replace '/web/instance_status/index\.html$', '/'
 
 if (!$distributionArn -or $distributionArn -eq "None") {
     throw "CloudFrontDistributionArn output was not found."
+}
+
+if (!$toolUrl -or $toolUrl -eq "None") {
+    throw "ToolUrl output was not found."
 }
 
 $deployArgs = @(
@@ -308,7 +344,7 @@ $deployArgs += @(
 Invoke-Cdk $deployArgs
 
 $stagedWebRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("$ToolNamePrefix-web-" + [guid]::NewGuid().ToString("N"))
-Copy-Item -LiteralPath $WebRoot -Destination $stagedWebRoot -Recurse
+Copy-Item -LiteralPath ".\src\web" -Destination $stagedWebRoot -Recurse
 Update-WebConfig `
     -ConfigPath (Join-Path $stagedWebRoot "common_script\config.js") `
     -ToolRootUrl $toolRootUrl `
@@ -317,7 +353,9 @@ Update-WebConfig `
     -Regions $deployRegions `
     -TimeZoneName $TimeZone `
     -TagCategoryKey $TagCategory `
-    -GroupTagKey $GroupTag
+    -TagCategoryLabel $TagCategoryLabel `
+    -TagCategorySelections $TagCategorySelections `
+    -TagCategory2Key $TagCategory2
 
 aws @awsProfileArgs s3 sync $stagedWebRoot "s3://$bucket/web/" --delete
 if ($LASTEXITCODE -ne 0) {
@@ -341,4 +379,4 @@ Write-Host "Deploy complete."
 Write-Host "GlobalStack: $globalStackName (us-east-1)"
 Write-Host "LocalStack: $localStackName ($RegionalRegion)"
 Write-Host "Regions: $($deployRegions -join ',')"
-Write-Host "ToolRootUrl: $toolRootUrl"
+Write-Host "ToolUrl: $toolUrl"

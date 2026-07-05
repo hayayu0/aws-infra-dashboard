@@ -27,7 +27,6 @@ export class LocalStack extends cdk.Stack {
       description:
         'CloudFront distribution ARN allowed to read S3 objects and invoke the Lambda function URL. Leave blank on the first deployment.',
     });
-
     const hasCloudFrontDistributionArn = new cdk.CfnCondition(this, 'HasCloudFrontDistributionArn', {
       expression: cdk.Fn.conditionNot(cdk.Fn.conditionEquals(cloudFrontDistributionArn.valueAsString, '')),
     });
@@ -305,29 +304,8 @@ export class LocalStack extends cdk.Stack {
       });
     });
 
-    new cdk.CfnOutput(this, 'DescribeApiFunctionName', {
-      value: describeFn.ref,
-    });
-    new cdk.CfnOutput(this, 'RecordTimeFunctionName', {
-      value: recordTimeFn.ref,
-    });
-    new cdk.CfnOutput(this, 'RecordCpuFunctionName', {
-      value: recordCpuFn.ref,
-    });
     new cdk.CfnOutput(this, 'ToolBucketName', {
       value: bucket.ref,
-    });
-    new cdk.CfnOutput(this, 'ToolBucketArn', {
-      value: bucket.attrArn,
-    });
-    new cdk.CfnOutput(this, 'ToolBucketRegionalDomainName', {
-      value: bucket.attrRegionalDomainName,
-    });
-    new cdk.CfnOutput(this, 'DirectLambdaUrl', {
-      value: functionUrl.attrFunctionUrl,
-    });
-    new cdk.CfnOutput(this, 'DirectSampleURL1', {
-      value: cdk.Fn.join('?', [functionUrl.attrFunctionUrl, 'api=ec2:describe_availability_zones']),
     });
   }
 
