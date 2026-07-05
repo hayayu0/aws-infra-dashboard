@@ -13,6 +13,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 S3_BUCKET = os.getenv('S3_BUCKET')
+ACCOUNT_ID = (os.getenv('ACCOUNT_ID') or '1').strip() or '1'
 
 REGION_LIST = [
     x for x in re.split(r'[, ]+', os.getenv('REGION_LIST') or os.getenv('AWS_REGION') or 'ap-northeast-1')
@@ -79,7 +80,7 @@ def record_service(region, target_svc, now_utc, now_hhmm):
 
     # 起動・停止状態を記録するファイル
     yyyy, mm, mmdd = now_utc.strftime('%Y'), now_utc.strftime('%m'), now_utc.strftime('%m%d')
-    s3_object_updown = f'lambda/record-start-stop-time/{region}/{yyyy}/{mm}/{yyyy}{mmdd}_{target_svc}_start_stop_time.json'
+    s3_object_updown = f'lambda/{ACCOUNT_ID}/record-start-stop-time/{region}/{yyyy}/{mm}/{yyyy}{mmdd}_{target_svc}_start_stop_time.json'
 
     # ステータスが変わったインスタンス数
     changed_num = 0

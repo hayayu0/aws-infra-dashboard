@@ -14,6 +14,7 @@ import re
 import boto3
 
 S3_BUCKET = os.getenv('S3_BUCKET')
+ACCOUNT_ID = (os.getenv('ACCOUNT_ID') or '1').strip() or '1'
 
 REGION_LIST = [
     x for x in re.split(r'[, ]+', os.getenv('REGION_LIST') or os.getenv('AWS_REGION') or 'ap-northeast-1')
@@ -179,7 +180,7 @@ def record_cpu_in_region(region, ymd):
 
         #S3に保存
         key_name_for_s3 = escape_name_for_safe(key_name)
-        S3.Object(S3_BUCKET, f"lambda/cpu-utilization/{region}/{ymd['ymd_str'][:4]}/{ymd['ymd_str'][4:6]}/{ymd['ymd_str'][6:8]}/{ymd['ymd_str']}_{key_name_for_s3}.json").put(Body = json.dumps(cpus_by_resource_id, ensure_ascii=False))
+        S3.Object(S3_BUCKET, f"lambda/{ACCOUNT_ID}/cpu-utilization/{region}/{ymd['ymd_str'][:4]}/{ymd['ymd_str'][4:6]}/{ymd['ymd_str'][6:8]}/{ymd['ymd_str']}_{key_name_for_s3}.json").put(Body = json.dumps(cpus_by_resource_id, ensure_ascii=False))
         time.sleep(0.02)
 
     print(f's3 put start {s3_start} end ' + str(datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')) + f' region {region}')
