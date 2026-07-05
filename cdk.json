@@ -1,0 +1,9 @@
+{
+  "app": "npx tsx bin/instance-status.ts",
+  "context": {
+    "toolNamePrefix": "infra-dashboard",
+    "accountId": "1",
+    "region": "ap-northeast-1",
+    "timeZone": "Asia/Tokyo"
+  }
+}
