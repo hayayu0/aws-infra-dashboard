@@ -1,3 +1,5 @@
+.agents/
+.git/
 node_modules/
 cdk.out/
 dist/
