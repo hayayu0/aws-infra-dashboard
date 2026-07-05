@@ -346,7 +346,7 @@ util.showHideColumnCheckBox = function(domid, tblcol, type){
 		$.each(tblcolCache, (i, v) => {
 			if(v.checkbox){
 				const chkId = 'chk_' + i;
-				$('#ColumnVisibleChecks').append('<label><input type="checkbox" class="InputColChecks" id="' + chkId + '" class="sp">' + v.checkbox + '</label>');
+				$('#ColumnVisibleChecks').append('<label><input type="checkbox" class="InputColChecks sp" id="' + chkId + '">' + v.checkbox + '</label>');
 
 				// 保存キーをページごとに分離
 				const storageKey = createLocalStorageKey(chkId + '_checked');
@@ -535,7 +535,7 @@ util.clickReloadTableButton = (delay) => {
 // opt.req: $.ajax系の .done(function(data,status,jqxhr)){ ... } のjqxhr(XMLHttpRequest)の値
 // opt.lastmodified: Last-Modified自体(opt.reqの代わり)
 // opt.selector: 表示先のセレクタID
-// opt.format: 表示フォーマットは自由記述  %Y, %y, %m, %0m, %d, %0d, %H, %0H, %M, %S, %w, %jw を指定可能
+// opt.format: 表示フォーマットは自由記述  %Y, %y, %m, %0m, %d, %0d, %H, %0H, %M, %S, %jw を指定可能
 // opt.weekendcolor: True= 土曜は青色、日曜は赤色にする(%jw指定時)
 // opt.delaymsec: 表示遅延 msec
 // -------------------------------------------------------------
@@ -559,11 +559,11 @@ util.dispLastUpdate = (opt) => {
 		dispstr = dispstr.replace('%0d', ('0' + (ti.getDate())).slice(-2)).replace('%d', ti.getDate());
 		dispstr = dispstr.replace('%0H', ('0' + (ti.getHours())).slice(-2)).replace('%H', ti.getHours());
 		dispstr = dispstr.replace('%M', ('0' + (ti.getMinutes())).slice(-2)).replace('%S', ('0' + (ti.getSeconds())).slice(-2));
-		// %w(Sun～Sat), %jw(日～土) を置換
+		// %jw(日～土) を置換
 		// opt.weekendcolorがある場合は %jw の置換前に色付け
 		if(opt.weekendcolor && ti.getDay() === 0) dispstr = dispstr.replace('%jw', '<span class="red">%jw</span>');
 		if(opt.weekendcolor && ti.getDay() === 6) dispstr = dispstr.replace('%jw', '<span class="blue">%jw</span>');
-		dispstr = dispstr.replace('%jw', youbiArr.charAt(ti.getDay())).replace('%w', 'SunMonTueWedThuFriSat'.charAt(ti.getDay()*3, 3));
+		dispstr = dispstr.replace('%jw', youbiArr.charAt(ti.getDay()));
 	}
 
 	// 一旦クリア
@@ -1106,7 +1106,7 @@ $(function(){
 		});
 
 		$('#SelSvcLabel').html(
-			'<span id="sel_svc_title">インスタンス：</span>' + 
+			'<span>インスタンス：</span>' + 
 			'<select id="sel_svc" class="sel_pad">' + svcOptHtml + '</select>' + 
 			'<span class="sp"></span>'
 		);
@@ -1127,7 +1127,7 @@ $(function(){
 		});
 
 		$('#SelCategoryLabel').after(
-			'<span id="sel_category_title">' + util.escapeHTML(categoryTag.label || '分類') + '：</span>' + 
+			'<span>' + util.escapeHTML(categoryTag.label || '分類') + '：</span>' + 
 			'<select id="sel_category" class="sel_pad">' + optHtml + '</select><span class="sp"></span>'
 		);
 
@@ -1175,7 +1175,7 @@ $(function(){
 		if(!document.querySelector('#ToolOptionBoxMain')){
 
 			$('body').append(
-				'<div id="ToolOptionBox" class="fadeInBox fadeInPre"><div id="ToolOptionCloseDeny" class="red OptionBoxCloseBtn">×</div><div class="OptionBoxCloseBtn green" id="ToolOptionBoxApply">&#10004;</div>' +
+				'<div id="ToolOptionBox" class="fadeInBox fadeInPre"><div class="red OptionBoxCloseBtn">×</div><div class="OptionBoxCloseBtn green" id="ToolOptionBoxApply">&#10004;</div>' +
 				'<div id="ToolOptionBoxMain">' +
 				(region_show ? '<label id="SelRegionsLabel"></label><br><br>' : '') +
 				'</div></div>');

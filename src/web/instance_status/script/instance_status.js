@@ -89,6 +89,11 @@ const ec2rdsRegionIds = () => ec2rdsTargetRegions().map(region => region.id).fil
 const ec2rdsRegionLocations = () => ec2rdsTargetRegions().map(region => region.location || region.id).filter(v => v).join(', ');
 const currentRegionName = () => ec2rdsSelectedRegion().id || acc[accNo].regions?.[0] || regions[0]?.id || '';
 const validRegionName = (regionName) => regions.some(region => region.id === regionName) ? regionName : '';
+const renderDemoMessage = () => {
+	const message = window.appConfig.demo?.message;
+	if(!message) return;
+	document.querySelector('#MainBlock')?.insertAdjacentHTML('afterbegin', '<div class="DemoMessage">' + util.escapeHTML(message) + '</div>');
+};
 const selectedEc2rdsAccountIds = () => (window.getSelectedAccountIds ? window.getSelectedAccountIds() : [accNo]).filter(accountId => acc[accountId]);
 const accountName = (accountId) => acc[accountId]?.selectAccountDisp || accountId;
 const accountUrlRoot = (accountId) => acc[accountId]?.urlRoot || urlToolRoot;
@@ -742,7 +747,6 @@ const ec2rdsCreateTableHeader = (tblname) => {
 		theadstr += '<th>起動～停止</th>';
 		theadstr += '<th>起動時間(h)</th>';
 		theadstr += '<th>最大CPU%</span></th>';
-		theadstr += '<th>平均CPU</span></th>';
 		theadstr += '<th id="thBar24h">0:00～24:00</th>';
 	}
 	// 作成
@@ -890,8 +894,11 @@ const isJustStartup = (n) => {
 
 	const matched = (tbl.cell(n, tableCol.beginend.no).data() || '').match(/[0-9][0-9]\:[0-9][0-9]～$/);
 
-	if(matched && matched[0] && Math.abs(mystat.now.getHours()*60+mystat.now.getMinutes() - ((matched[0].slice(0, 2) * 60) + (matched[0].slice(3, 5) * 1)) <= 10)){
-		return true;
+	if(matched && matched[0]){
+		const diffMinutes = mystat.now.getHours()*60+mystat.now.getMinutes() - ((matched[0].slice(0, 2) * 60) + (matched[0].slice(3, 5) * 1));
+		if(diffMinutes >= 0 && diffMinutes <= 10){
+			return true;
+		}
 	}
 	return false;
 }
@@ -1220,7 +1227,7 @@ const loadCompleteHistFunc = (opt, tagname) => {
 				// <firstHistDays>日前の場所に追加描画をするためのボタンを2種類表示
 				tbl.cell(mystat.firstHistDays, tableCol.bar24h.no).data(
 					'<div>' +
-					'<button id="btnDays31" class="btnDays maruButton" data-days="31">30日前まで表示</button>' +
+					'<button class="btnDays maruButton" data-days="31">30日前まで表示</button>' +
 					'<button id="btnDays61" class="btnDays maruButton" data-days="61">2ヶ月分を表示</button></div>' +
 					tbl.cell(mystat.firstHistDays, tableCol.bar24h.no).data()
 				);
@@ -1800,12 +1807,12 @@ const renderComputerInfo = (fndInst, computerName, opt = {}) => {
 
 	mystat.targetInstanceId = fndInst.InstanceId || fndInst.DBInstanceIdentifier || '';
 
-	if(fndInst.Tags?.[ groupTagFilter.key ]) $('#dispComputerInfo > details').append(groupTagFilter.key + 'タグ:　<span class="toClip">' + fndInst.Tags[ groupTagFilter.key ] + '</span>');
-	if(fndInst.InstanceId) $('#dispComputerInfo > details').append('<br>インスタンスID:　<span class="toClip b">' + fndInst['InstanceId'] + '</span>');
-	if(fndInst.Tags && fndInst.Tags[ categoryTagKey ]) $('#dispComputerInfo > details').append('<br>' + util.escapeHTML(categoryTag.label || '分類') + '(' + util.escapeHTML(categoryTagKey) + 'タグ):　<span class="toClip">' + fndInst.Tags[ categoryTagKey ] + '</span>');
-	if(fndInst.PrivateIpAddress) $('#dispComputerInfo > details').append('<br>Private IP:　<span class="toClip">' + fndInst.PrivateIpAddress + '</span>');
-	if(fndInst.InstanceType) $('#dispComputerInfo > details').append('<br>インスタンスタイプ:　<span class="toClip">' + fndInst.InstanceType + '</span>');
-	if(fndInst.DBInstanceClass) $('#dispComputerInfo > details').append('<br>インスタンスクラス:　<span class="toClip">' + fndInst.DBInstanceClass + '</span>');
+	if(fndInst.Tags?.[ groupTagFilter.key ]) $('#dispComputerInfo > details').append(groupTagFilter.key + 'タグ:　<span class="toClip">' + util.escapeHTML(fndInst.Tags[ groupTagFilter.key ]) + '</span>');
+	if(fndInst.InstanceId) $('#dispComputerInfo > details').append('<br>インスタンスID:　<span class="toClip b">' + util.escapeHTML(fndInst['InstanceId']) + '</span>');
+	if(fndInst.Tags && fndInst.Tags[ categoryTagKey ]) $('#dispComputerInfo > details').append('<br>' + util.escapeHTML(categoryTag.label || '分類') + '(' + util.escapeHTML(categoryTagKey) + 'タグ):　<span class="toClip">' + util.escapeHTML(fndInst.Tags[ categoryTagKey ]) + '</span>');
+	if(fndInst.PrivateIpAddress) $('#dispComputerInfo > details').append('<br>Private IP:　<span class="toClip">' + util.escapeHTML(fndInst.PrivateIpAddress) + '</span>');
+	if(fndInst.InstanceType) $('#dispComputerInfo > details').append('<br>インスタンスタイプ:　<span class="toClip">' + util.escapeHTML(fndInst.InstanceType) + '</span>');
+	if(fndInst.DBInstanceClass) $('#dispComputerInfo > details').append('<br>インスタンスクラス:　<span class="toClip">' + util.escapeHTML(fndInst.DBInstanceClass) + '</span>');
 };
 const findEc2ComputerInfo = (instanceid, tagname, opt = {}) => {
 
@@ -1887,7 +1894,6 @@ const drawHistoryMain = () => {
 		dataInitial[tableCol.ago.no] = (n + gapdate) + ' 日前';
 		dataInitial[tableCol.beginend.no] = '-';
 		dataInitial[tableCol.maxcpu.no] = '-';
-		dataInitial[tableCol.avgcpu.no] = '';
 		dataInitial[tableCol.bar24h.no] = '<div class="bar24h_wrap" data-date="' + strymd + '"><img class="spanLink cpu_graph_btns" src="../common_script/images/graphicon.png" width="11" height="11"><svg id="' + mystat.svgIdPre + strymd + '" width="' + mystat.bar24hWH.width + '" height="' + mystat.bar24hWH.height + '"></svg></div><div class="cpu_graph_wrap"></div>';
 
 		dataset.push(dataInitial.concat());   // 参照ではなく値を渡してpushするためconcat()を付与
@@ -1914,15 +1920,15 @@ const drawHistoryMain = () => {
 const drawLegend = () => {
 
 	// 凡例表示
-	util.writeHtml(document.querySelector('#hanrei'), '<span class="fontmono"><span id="cpu_legend_stopped" style="color:' + mystat.statColor.off + '; background-color:' + mystat.statColor.off + '">xx</span>:' + statusLabel.stopped +
+	util.writeHtml(document.querySelector('#hanrei'), '<span class="fontmono"><span style="color:' + mystat.statColor.off + '; background-color:' + mystat.statColor.off + '">xx</span>:' + statusLabel.stopped +
 		'<span class="sp"></span>' +
-		'<span id="cpu_legend_running" style="color:' + mystat.statColor.on +  '; background-color:' + mystat.statColor.on + '">oo</span>:' + statusLabel.running +
+		'<span style="color:' + mystat.statColor.on +  '; background-color:' + mystat.statColor.on + '">oo</span>:' + statusLabel.running +
 		'<span class="sp"></span>' +
-		'<span id="cpu_legend_running" class="b" style="color:' + mystat.statColor.fullText + '; background-color:' + mystat.statColor.full + ';">FU</span>:Storage-Full(RDS)' + 
+		'<span class="b" style="color:' + mystat.statColor.fullText + '; background-color:' + mystat.statColor.full + ';">FU</span>:Storage-Full(RDS)' + 
 		'<span class="sp"></span>' +
-		'<span id="cpu_legend_running" class="b" style="color:' + mystat.statColor.impairedText +  '; background-color:' + mystat.statColor.impaired + '">異</span>:' + statusLabel.impaired + 
+		'<span class="b" style="color:' + mystat.statColor.impairedText +  '; background-color:' + mystat.statColor.impaired + '">異</span>:' + statusLabel.impaired + 
 		'<span class="sp"></span>' +
-		'<span id="cpu_legend_running" class="b" style="color:' + mystat.statColor.terminatedText +  '; background-color:' + mystat.statColor.terminated + '">Te</span>:' + statusLabel.terminated + 
+		'<span class="b" style="color:' + mystat.statColor.terminatedText +  '; background-color:' + mystat.statColor.terminated + '">Te</span>:' + statusLabel.terminated + 
 		'<span class="sp"></span><span class="cpu_legend"></span>' + 
 		':<label><input type="checkbox" id="chk_cpu_util">CPU使用率(0-100%)</label></span><span class="sp"></span>');
 
@@ -1944,6 +1950,7 @@ var onLoad = function(fHtml)
 	let cpuGraphWH = { w: 740, h: 220 };
 
 	document.querySelector('#TitleInstance').innerText = acc[accNo].instanceService.join("/");
+	renderDemoMessage();
 
 	document.title = (acc[accNo].selectAccountDisp || accNo) + ' ' + document.title;
 
@@ -1967,7 +1974,7 @@ var onLoad = function(fHtml)
 	}else{
 
 		// history.html用に書き換え
-		tableCol = {...tableCol, ...{ _meta: {initcols:5}, date: {no:0, visible:true}, ago: {no:1, visible:true}, beginend: {no:2, visible:true}, hh: {no:3, visible:true}, maxcpu: {no:4, visible:true}, avgcpu: {no:5, visible:false}, bar24h: {no:6, visible:true} } };
+		tableCol = {...tableCol, ...{ _meta: {initcols:6}, date: {no:0, visible:true}, ago: {no:1, visible:true}, beginend: {no:2, visible:true}, hh: {no:3, visible:true}, maxcpu: {no:4, visible:true}, bar24h: {no:5, visible:true} } };
 
 		// ローカルストレージおよび該当URLパラメータを取得してコントロールに反映
 		util.getUrlParameterAndLocalStorageToControl(
@@ -2007,7 +2014,7 @@ var onLoad = function(fHtml)
 	drawLegend(false);
 
 	// 各種クリックイベント
-	document.addEventListener('click', () => {
+	document.addEventListener('click', (event) => {
 
 		//	共通用
 		// CPU使用率グラフの表示ボタン

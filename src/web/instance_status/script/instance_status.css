@@ -16,6 +16,8 @@
 
 .StartstopLoadWarning{ color:#7a4b00; background-color:#fef6d2; border:1px solid #d8b13f; margin:4px 0; padding:6px 10px; font-weight:bold; }
 
+.DemoMessage{ color:#6b3a00; background-color:#f5a642; border:0; margin:0; padding:1px; font-weight:bold; text-align: center;}
+
 .HistoryRepresentativeWarning{ color:#8a1f1f; background-color:#fff1f1; border:1px solid #d86b6b; margin:4px 0; padding:5px 10px; font-weight:bold; }
 
 #dispComputerInfo{ font-size:16px; font-weight:bold; background-color:#f2eff2; margin:4px 0; }

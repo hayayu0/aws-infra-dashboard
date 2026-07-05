@@ -60,7 +60,7 @@ window.addEventListener('pageshow', (event) => {
 		document.querySelector('#account_disp').innerText = accountDisplayText();
 		if(!document.querySelector('#AccountOptionBox')){
 			$('body').append(
-				'<div id="AccountOptionBox" class="fadeInBox fadeInPre"><div id="AccountOptionCloseDeny" class="red AccountOptionBoxCloseBtn">×</div><div class="AccountOptionBoxCloseBtn green" id="AccountOptionBoxApply">&#10004;</div>' +
+				'<div id="AccountOptionBox" class="fadeInBox fadeInPre"><div class="red AccountOptionBoxCloseBtn">×</div><div class="AccountOptionBoxCloseBtn green" id="AccountOptionBoxApply">&#10004;</div>' +
 				'<div id="AccountOptionBoxMain"><label id="SelAccountsLabel"><span class="spLR">アカウント選択</span><div id="sel_accounts"></div></label></div></div>'
 			);
 			accountDisplayOptions.forEach(([k, v]) => {
