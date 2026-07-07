@@ -1,4 +1,4 @@
-﻿﻿'use strict';
+﻿'use strict';
 
 // デプロイ/環境固有の必須設定 (window.appConfig)
 // 新しい環境へ展開する際は、このファイル内の値を編集する
@@ -35,15 +35,16 @@ window.appConfig = {
         allValue: 'ALL'
     },
 
-    accounts: {
-        "1": {
-            "selectAccountDisp": "アカ1",
-            "instanceRegionId": 0,
-            "instanceService": ["EC2", "RDS"],
-            "regions": [ "ap-northeast-1", "ap-northeast-3" ],
-            "urlRoot": window.location.origin + "/"
-        }
-    },
+    accounts: [
+      {
+        "accountName": "アカ1",
+        "instanceRegionId": 0,
+        "additionalService": ["RDS"],
+        "regions": [ "ap-northeast-1", "ap-northeast-3" ],
+        "urlRoot": window.location.origin + "/",
+        "subDir": ""
+      }
+    ],
 
     // タグ分類列の定義。label/key/options を変更することで「環境」「システム」など任意の区分にできる
     categoryTag: {

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 TOOL_NAME_PREFIX="infra-dashboard"
-ACCOUNT_ID="1"
+SUB_DIR=""
+ADDITIONAL_SERVICE="RDS"
 ACCOUNT_DISPLAY_NAME=""
 REGIONAL_REGION="ap-northeast-1"
 OTHER_REGIONS=""
@@ -24,8 +25,9 @@ Usage: tools/deploy-cdk.sh [options]
 
 Options:
   --tool-name-prefix NAME       Default: infra-dashboard
-  --account-id ID               Default: 1
-  --account-display-name NAME   Default: アカ<account-id>
+  --sub-dir DIR                 S3 sub directory ([A-Za-z0-9,_#-]+). Default: empty
+  --additional-service CSV      Comma-separated services other than EC2 ([A-Za-z0-9,]). Default: RDS. Specify "" if none
+  --account-display-name NAME   Default: アカ1
   --regional-region REGION      Default: ap-northeast-1
   --other-regions REGIONS       Comma-separated additional regions. Default: empty
   --time-zone TIME_ZONE         Default: Asia/Tokyo
@@ -45,7 +47,8 @@ USAGE
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --tool-name-prefix) TOOL_NAME_PREFIX="$2"; shift 2 ;;
-        --account-id) ACCOUNT_ID="$2"; shift 2 ;;
+        --sub-dir) SUB_DIR="$2"; shift 2 ;;
+        --additional-service) ADDITIONAL_SERVICE="$2"; shift 2 ;;
         --account-display-name) ACCOUNT_DISPLAY_NAME="$2"; shift 2 ;;
         --regional-region) REGIONAL_REGION="$2"; shift 2 ;;
         --other-regions) OTHER_REGIONS="$2"; shift 2 ;;
@@ -69,10 +72,20 @@ if [ ! -d "$WEB_ROOT" ]; then
     exit 1
 fi
 
+if [ -n "$SUB_DIR" ] && ! [[ "$SUB_DIR" =~ ^[A-Za-z0-9,_#-]+$ ]]; then
+    echo "Invalid --sub-dir: $SUB_DIR (allowed characters: [A-Za-z0-9,_#-])" >&2
+    exit 2
+fi
+
+if ! [[ "$ADDITIONAL_SERVICE" =~ ^[A-Za-z0-9,]*$ ]]; then
+    echo "Invalid --additional-service: $ADDITIONAL_SERVICE (allowed characters: [A-Za-z0-9,])" >&2
+    exit 2
+fi
+
 if [ -n "$ACCOUNT_DISPLAY_NAME" ]; then
     RESOLVED_ACCOUNT_DISPLAY_NAME="$ACCOUNT_DISPLAY_NAME"
 else
-    RESOLVED_ACCOUNT_DISPLAY_NAME="アカ${ACCOUNT_ID}"
+    RESOLVED_ACCOUNT_DISPLAY_NAME="アカ1"
 fi
 
 LOCAL_STACK_NAME="${TOOL_NAME_PREFIX}-local"
@@ -167,7 +180,8 @@ update_web_config() {
 
     CONFIG_PATH="$config_path" \
     TOOL_ROOT_URL="$tool_root_url" \
-    ACCOUNT_ID="$ACCOUNT_ID" \
+    SUB_DIR="$SUB_DIR" \
+    ADDITIONAL_SERVICE="$ADDITIONAL_SERVICE" \
     ACCOUNT_DISPLAY_NAME="$RESOLVED_ACCOUNT_DISPLAY_NAME" \
     TIMEZONE_OFFSET="$timezone_offset" \
     TAG_CATEGORY2="$TAG_CATEGORY2" \
@@ -201,12 +215,19 @@ function categoryOptionsSource(selections) {
 
 replaceOrThrow(/urlToolRoot:\s*[^,\r\n]+/, `urlToolRoot: ${JSON.stringify(process.env.TOOL_ROOT_URL)}`, 'urlToolRoot');
 replaceOrThrow(
-  /(?<key>"[^"]+")(?<suffix>\s*:\s*\{\s*\r?\n\s*"selectAccountDisp"\s*:\s*)['"][^'"]*['"]/,
-  (...args) => {
-    const groups = args.at(-1);
-    return `${JSON.stringify(process.env.ACCOUNT_ID)}${groups.suffix}${JSON.stringify(process.env.ACCOUNT_DISPLAY_NAME)}`;
-  },
-  'accounts account key and selectAccountDisp',
+  /("accountName"\s*:\s*)['"][^'"]*['"]/,
+  (_, prefix) => `${prefix}${JSON.stringify(process.env.ACCOUNT_DISPLAY_NAME)}`,
+  'accounts accountName',
+);
+replaceOrThrow(
+  /("additionalService"\s*:\s*)\[[^\]]*\]/,
+  (_, prefix) => `${prefix}${JSON.stringify((process.env.ADDITIONAL_SERVICE || '').split(',').map((value) => value.trim()).filter(Boolean))}`,
+  'accounts additionalService',
+);
+replaceOrThrow(
+  /("subDir"\s*:\s*)['"][^'"]*['"]/,
+  (_, prefix) => `${prefix}${JSON.stringify(process.env.SUB_DIR || '')}`,
+  'accounts subDir',
 );
 replaceOrThrow(/timezoneOffset:\s*-?\d+(?:\.\d+)?/, `timezoneOffset: ${process.env.TIMEZONE_OFFSET}`, 'timezoneOffset');
 replaceOrThrow(
@@ -237,7 +258,7 @@ replaceOrThrow(
 replaceOrThrow(
   /"regions":\s*\[[^\]]*\]/,
   `"regions": ${JSON.stringify(JSON.parse(process.env.REGIONS_JSON))}`,
-  'accounts.1.regions',
+  'accounts regions',
 );
 
 fs.writeFileSync(configPath, text, 'utf8');
@@ -249,7 +270,8 @@ npx cdk deploy "$LOCAL_STACK_NAME" \
     --require-approval never \
     --parameters "${LOCAL_STACK_NAME}:CloudFrontDistributionArn=" \
     --context "toolNamePrefix=$TOOL_NAME_PREFIX" \
-    --context "accountId=$ACCOUNT_ID" \
+    --context "subDir=$SUB_DIR" \
+    --context "additionalService=$ADDITIONAL_SERVICE" \
     --context "accountDisplayName=$RESOLVED_ACCOUNT_DISPLAY_NAME" \
     --context "region=$REGIONAL_REGION" \
     --context "otherRegions=$OTHER_REGIONS" \
@@ -282,7 +304,8 @@ npx cdk deploy "$GLOBAL_STACK_NAME" \
     --parameters "${GLOBAL_STACK_NAME}:AllowedIpV4Cidr=$ALLOWED_IP_V4_CIDR" \
     --parameters "${GLOBAL_STACK_NAME}:AllowedIpV6Cidr=$ALLOWED_IP_V6_CIDR" \
     --context "toolNamePrefix=$TOOL_NAME_PREFIX" \
-    --context "accountId=$ACCOUNT_ID" \
+    --context "subDir=$SUB_DIR" \
+    --context "additionalService=$ADDITIONAL_SERVICE" \
     --context "accountDisplayName=$RESOLVED_ACCOUNT_DISPLAY_NAME" \
     --context "region=$REGIONAL_REGION" \
     --context "otherRegions=$OTHER_REGIONS" \
@@ -308,7 +331,8 @@ npx cdk deploy "$LOCAL_STACK_NAME" \
     --require-approval never \
     --parameters "${LOCAL_STACK_NAME}:CloudFrontDistributionArn=$distribution_arn" \
     --context "toolNamePrefix=$TOOL_NAME_PREFIX" \
-    --context "accountId=$ACCOUNT_ID" \
+    --context "subDir=$SUB_DIR" \
+    --context "additionalService=$ADDITIONAL_SERVICE" \
     --context "accountDisplayName=$RESOLVED_ACCOUNT_DISPLAY_NAME" \
     --context "region=$REGIONAL_REGION" \
     --context "otherRegions=$OTHER_REGIONS" \

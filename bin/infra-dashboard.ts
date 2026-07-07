@@ -6,16 +6,22 @@ import { LocalStack } from '../lib/local-stack';
 const app = new cdk.App();
 
 const toolNamePrefix = readStringContext(app, 'toolNamePrefix', 'infra-dashboard');
-const accountId = readStringContext(app, 'accountId', '1');
-const accountDisplayName = readStringContext(app, 'accountDisplayName', `アカ${accountId}`);
+const subDir = readStringContext(app, 'subDir', '');
+const accountDisplayName = readStringContext(app, 'accountDisplayName', 'アカ1');
+// additionalService: 未指定なら ['RDS']、空文字指定なら []（追加サービスなし）
+const additionalServiceContext = app.node.tryGetContext('additionalService');
+const additionalService = typeof additionalServiceContext === 'string'
+  ? additionalServiceContext.split(',').map((item) => item.trim()).filter((item) => item !== '')
+  : ['RDS'];
 const regionalRegion = readStringContext(app, 'region', 'ap-northeast-1');
 const regions = uniqueNonEmpty([regionalRegion, ...readStringListContext(app, 'otherRegions')]);
 const timeZone = readStringContext(app, 'timeZone', 'Asia/Tokyo');
 
 new LocalStack(app, `${toolNamePrefix}-local`, {
   toolNamePrefix,
-  accountId,
+  subDir,
   accountDisplayName,
+  additionalService,
   regionalRegion,
   regions,
   timeZone,

@@ -11,6 +11,16 @@ if(!window.appConfig){
 	throw new Error('config.js must be loaded before utils.js');
 }
 
+const normalizeAccountConfigs = (accountsConfig) => Object.fromEntries((accountsConfig || []).map((accountConfig, index) => {
+	const config = accountConfig || {};
+	// additionalService: 未定義なら ['RDS']、配列なら空文字要素を除去（[] や [""] は「追加サービスなし」）
+	const additionalService = Array.isArray(config.additionalService)
+		? config.additionalService.map((value) => String(value).trim()).filter((value) => value !== '')
+		: ['RDS'];
+	return [String(index), { ...config, additionalService }];
+}));
+window.normalizeAccountConfigs = normalizeAccountConfigs;
+
 const demoNow = window.appConfig.demo?.now || null;
 
 const toolConfig = {
@@ -49,8 +59,9 @@ const createLocalStorageKey = (key) => reversePath[1] + '-' + reversePath[0].spl
 const urlHome = document.currentScript.src.replace(/(.*)\:\/\/(.*?)\/(.*)\/(.*?)\/(.*)$/, '/$3');
 
 const requestedAccountForRegions = new URLSearchParams(window.location.search).get('account');
-const accountConfigsForRegions = window.appConfig.accounts || {};
-const accountConfigForRegions = accountConfigsForRegions[requestedAccountForRegions] || accountConfigsForRegions['1'] || {};
+const accountConfigsForRegions = normalizeAccountConfigs(window.appConfig.accounts);
+const defaultAccountIdForRegions = Object.keys(accountConfigsForRegions)[0] || '';
+const accountConfigForRegions = accountConfigsForRegions[requestedAccountForRegions] || accountConfigsForRegions[defaultAccountIdForRegions] || {};
 const configuredRegionIds = Object.values(accountConfigsForRegions).flatMap(accountConfig => Array.isArray(accountConfig.regions) ? accountConfig.regions : []);
 const ownRegionId = (() => {
 	const ownRegions = Array.isArray(accountConfigForRegions.regions) ? accountConfigForRegions.regions : [];

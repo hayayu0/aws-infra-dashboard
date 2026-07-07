@@ -1,6 +1,9 @@
 ﻿param(
     [string]$ToolNamePrefix = "infra-dashboard",
-    [string]$AccountId = "1",
+    [ValidatePattern('^[A-Za-z0-9,_#-]*$')]
+    [string]$SubDir = "",
+    [ValidatePattern('^[A-Za-z0-9,]*$')]
+    [string]$AdditionalService = "RDS",
     [string]$AccountDisplayName = "",
     [string]$RegionalRegion = "ap-northeast-1",
     [string]$OtherRegions = "",
@@ -19,7 +22,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$resolvedAccountDisplayName = if ($AccountDisplayName -ne "") { $AccountDisplayName } else { "アカ$AccountId" }
+$resolvedAccountDisplayName = if ($AccountDisplayName -ne "") { $AccountDisplayName } else { "アカ1" }
 
 $awsProfileArgs = @()
 if ($Profile -ne "") {
@@ -108,7 +111,8 @@ function Update-WebConfig {
     param(
         [string]$ConfigPath,
         [string]$ToolRootUrl,
-        [string]$AccountId,
+        [string]$SubDir,
+        [string]$AdditionalService,
         [string]$AccountDisplayName,
         [string[]]$Regions,
         [string]$TimeZoneName,
@@ -141,10 +145,20 @@ function Update-WebConfig {
     }
     $categoryOptionsText = "[$newLine            $($categoryOptions -join ",$newLine            ")$newLine        ]"
     $timezoneOffset = Get-TimeZoneOffsetHours $TimeZoneName
-    $accountRegex = [regex]::new('(?<key>"[^"]+")(?<suffix>\s*:\s*\{\s*\r?\n\s*"selectAccountDisp"\s*:\s*)[''"][^''"]*[''"]')
+    $additionalServiceJsLiterals = @($AdditionalService.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | ForEach-Object { ConvertTo-JsStringLiteral $_ })
+    $additionalServiceList = '[' + ($additionalServiceJsLiterals -join ', ') + ']'
+    $accountNameRegex = [regex]::new('("accountName"\s*:\s*)[''"][^''"]*[''"]')
+    $additionalServiceRegex = [regex]::new('("additionalService"\s*:\s*)\[[^\]]*\]')
+    $subDirRegex = [regex]::new('("subDir"\s*:\s*)[''"][^''"]*[''"]')
 
-    if (!$accountRegex.IsMatch($configText)) {
-        throw "Web config must define an account with selectAccountDisp."
+    if (!$accountNameRegex.IsMatch($configText)) {
+        throw "Web config must define an account with accountName."
+    }
+    if (!$additionalServiceRegex.IsMatch($configText)) {
+        throw "Web config must define an account with additionalService."
+    }
+    if (!$subDirRegex.IsMatch($configText)) {
+        throw "Web config must define an account with subDir."
     }
 
     $configText = [regex]::Replace(
@@ -152,9 +166,19 @@ function Update-WebConfig {
         'urlToolRoot:\s*[^,\r\n]+',
         "urlToolRoot: $(ConvertTo-JsStringLiteral $ToolRootUrl)"
     )
-    $configText = $accountRegex.Replace(
+    $configText = $accountNameRegex.Replace(
         $configText,
-        { param($match) (ConvertTo-JsStringLiteral $AccountId) + $match.Groups["suffix"].Value + (ConvertTo-JsStringLiteral $AccountDisplayName) },
+        { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $AccountDisplayName) },
+        1
+    )
+    $configText = $additionalServiceRegex.Replace(
+        $configText,
+        { param($match) $match.Groups[1].Value + $additionalServiceList },
+        1
+    )
+    $configText = $subDirRegex.Replace(
+        $configText,
+        { param($match) $match.Groups[1].Value + (ConvertTo-JsStringLiteral $SubDir) },
         1
     )
     $configText = [regex]::Replace(
@@ -233,7 +257,9 @@ $deployArgs += @(
     "--context",
     "toolNamePrefix=$ToolNamePrefix",
     "--context",
-    "accountId=$AccountId",
+    "subDir=$SubDir",
+    "--context",
+    "additionalService=$AdditionalService",
     "--context",
     "accountDisplayName=$resolvedAccountDisplayName",
     "--context",
@@ -292,7 +318,9 @@ $globalDeployArgs += @(
     "--context",
     "toolNamePrefix=$ToolNamePrefix",
     "--context",
-    "accountId=$AccountId",
+    "subDir=$SubDir",
+    "--context",
+    "additionalService=$AdditionalService",
     "--context",
     "accountDisplayName=$resolvedAccountDisplayName",
     "--context",
@@ -331,7 +359,9 @@ $deployArgs += @(
     "--context",
     "toolNamePrefix=$ToolNamePrefix",
     "--context",
-    "accountId=$AccountId",
+    "subDir=$SubDir",
+    "--context",
+    "additionalService=$AdditionalService",
     "--context",
     "accountDisplayName=$resolvedAccountDisplayName",
     "--context",
@@ -348,7 +378,8 @@ Copy-Item -LiteralPath ".\src\web" -Destination $stagedWebRoot -Recurse
 Update-WebConfig `
     -ConfigPath (Join-Path $stagedWebRoot "common_script\config.js") `
     -ToolRootUrl $toolRootUrl `
-    -AccountId $AccountId `
+    -SubDir $SubDir `
+    -AdditionalService $AdditionalService `
     -AccountDisplayName $resolvedAccountDisplayName `
     -Regions $deployRegions `
     -TimeZoneName $TimeZone `

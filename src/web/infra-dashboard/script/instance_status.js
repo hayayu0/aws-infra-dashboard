@@ -87,7 +87,7 @@ const ec2rdsSelectedRegion = () => regions[regionId] || regions[0] || {};
 const ec2rdsTargetRegions = () => ec2rdsSelectedRegion().id ? [ec2rdsSelectedRegion()] : [];
 const ec2rdsRegionIds = () => ec2rdsTargetRegions().map(region => region.id).filter(v => v);
 const ec2rdsRegionLocations = () => ec2rdsTargetRegions().map(region => region.location || region.id).filter(v => v).join(', ');
-const currentRegionName = () => ec2rdsSelectedRegion().id || acc[accNo].regions?.[0] || regions[0]?.id || '';
+const currentRegionName = () => ec2rdsSelectedRegion().id || acc[accNo]?.regions?.[0] || regions[0]?.id || '';
 const validRegionName = (regionName) => regions.some(region => region.id === regionName) ? regionName : '';
 const renderDemoMessage = () => {
 	const message = window.appConfig.demo?.message;
@@ -95,10 +95,13 @@ const renderDemoMessage = () => {
 	document.querySelector('#MainBlock')?.insertAdjacentHTML('afterbegin', '<div class="DemoMessage">' + util.escapeHTML(message) + '</div>');
 };
 const selectedEc2rdsAccountIds = () => (window.getSelectedAccountIds ? window.getSelectedAccountIds() : [accNo]).filter(accountId => acc[accountId]);
-const accountName = (accountId) => acc[accountId]?.selectAccountDisp || accountId;
+const accountName = (accountId) => acc[accountId]?.accountName || accountId;
 const accountUrlRoot = (accountId) => acc[accountId]?.urlRoot || urlToolRoot;
-const accountS3Dir = (accountId, dirName) => dirName + '/' + accountId;
-const accountRegionTargets = () => selectedEc2rdsAccountIds()
+const accountSubDir = (accountId) => String(acc[accountId]?.subDir || '').replace(/^\/+|\/+$/g, '');
+const accountS3Dir = (accountId, dirName) => accountSubDir(accountId) ? dirName + '/' + accountSubDir(accountId) : dirName;
+const accountLoadsSvc = (accountId, svc) => svc === 'ec2' || (acc[accountId]?.additionalService || []).includes(svc.toUpperCase());
+const accountRegionTargets = (svc = '') => selectedEc2rdsAccountIds()
+	.filter(accountId => !svc || accountLoadsSvc(accountId, svc))
 	.filter(accountId => (acc[accountId].regions || []).includes(currentRegionName()))
 	.map(accountId => ({ accountId, account:acc[accountId], urlRoot:accountUrlRoot(accountId), region:ec2rdsSelectedRegion() }));
 const regionFromAz = (az) => (az || '').match(/^([a-z]{2}(?:-[a-z]+)+-\d)[a-z]$/i)?.[1] || '';
@@ -365,7 +368,7 @@ const tagListToObject = (tagList) => {
 };
 const objectEntries = (value) => (value && typeof value === 'object' && !Array.isArray(value)) ? Object.entries(value) : [];
 const apiFetchByTarget = (query, cacheSec, target) => util.cacheFetch(target.urlRoot + 'api/?' + query + '&' + util.cacheParam(cacheSec) + '&region=' + encodeURIComponent(target.region.id));
-const loadAccountRegionFlatMap = (fetcher, mapper) => Promise.all(accountRegionTargets().map(fetcher)).then(results => results.flatMap(mapper));
+const loadAccountRegionFlatMap = (fetcher, mapper, svc = '') => Promise.all(accountRegionTargets(svc).map(fetcher)).then(results => results.flatMap(mapper));
 const mergeStartstopRegionData = (result, regionId, data, accountId = '') => {
 	result[regionId] = result[regionId] || {};
 	objectEntries(data).forEach(([tagName, resourceMap]) => {
@@ -441,13 +444,14 @@ const loadRdsInstancesForConfiguredRegions = () => loadAccountRegionFlatMap(
 		const liveLoader = () => apiFetchByTarget('api=rds:describe_db_instances&simpletag&select=DBInstanceIdentifier:TagList:AvailabilityZone:DBInstanceClass:DBSubnetGroup', 60, target);
 		return (useStoredDescribeForTargetDate() ? fetchStoredDescribeList(strymd, 'rds', target.region.id, target.accountId, target.urlRoot) : (useTodayDescribeMerge() ? fetchTodayDescribeList(strymd, 'rds', liveLoader, target.region.id, target.accountId, target.urlRoot) : liveLoader())).then(data => ({ accountId:target.accountId, regionId:target.region.id, data }));
 	},
-	result => (Array.isArray(result.data) ? mergeRdsDescribeInstances(result.data) : (result.data.DBInstances || [])).map(inst => ({ ...inst, __accountId:result.accountId, __region:result.regionId }))
+	result => (Array.isArray(result.data) ? mergeRdsDescribeInstances(result.data) : (result.data.DBInstances || [])).map(inst => ({ ...inst, __accountId:result.accountId, __region:result.regionId })),
+	'rds'
 ).then(DBInstances => ({ DBInstances }));
 const loadVpcDataForConfiguredRegions = () => loadAccountRegionFlatMap(
 	target => apiFetchByTarget('api=ec2:describe_vpcs&select=Tags:VpcId', 3600, target),
 	data => data.Vpcs || []
 ).then(Vpcs => ({ Vpcs }));
-const loadStartstopForConfiguredRegions = (ymd, svc, cacheSuffix = '') => Promise.all(accountRegionTargets().map(target => util.fetch(startstopStateUrl(ymd, svc, cacheSuffix, target.region.id, target.accountId, target.urlRoot)).then(data => {
+const loadStartstopForConfiguredRegions = (ymd, svc, cacheSuffix = '') => Promise.all(accountRegionTargets(svc).map(target => util.fetch(startstopStateUrl(ymd, svc, cacheSuffix, target.region.id, target.accountId, target.urlRoot)).then(data => {
 	if(countRawStartstopResources(data) === 0) mystat.startstopEmptyFetches.push({ svc, accountId:target.accountId, regionName:target.region.id, ymd });
 	return [target.region.id, data, target.accountId];
 }))).then(entries => {
@@ -561,9 +565,10 @@ const loadLatestEc2StatusForConfiguredRegions = () => loadAccountRegionFlatMap(
 );
 const loadLatestRdsStatusForConfiguredRegions = () => loadAccountRegionFlatMap(
 	target => apiFetchByTarget('api=rds:describe_db_instances&select=DBInstanceIdentifier:DBInstanceStatus', 30, target),
-	data => data.DBInstances || []
+	data => data.DBInstances || [],
+	'rds'
 );
-const isSelectedSvc = (svc) => selectedSvcVal.indexOf(svc + 'Y') !== -1 && (svc !== 'rds' || selectedEc2rdsAccountIds().some(accountId => acc[accountId].instanceService.indexOf('RDS') >= 0));
+const isSelectedSvc = (svc) => selectedSvcVal.indexOf(svc + 'Y') !== -1 && (svc !== 'rds' || selectedEc2rdsAccountIds().some(accountId => accountLoadsSvc(accountId, 'rds')));
 const loadSelectedStartstopForLocalYmd = (svc) => isSelectedSvc(svc) ? loadStartstopForLocalYmdConfiguredRegions(strymd, svc, '?' + util.cacheParam(120, 't')) : Promise.resolve({});
 
 // 指定のyyyymmddが今日かどうか
@@ -729,18 +734,19 @@ const ec2rdsCreateTableHeader = (tblname) => {
 	let theadstr = '<tr>';
 
 	if(mystat.fromHtml === mystat.fromPattern[0]){
-		theadstr += '<th class="padLR">Nameタグ</th>';
-		theadstr += '<th>アカウント</th>';
-		theadstr += '<th>' + util.escapeHTML(categoryTag.label || '分類') + '</th>';
-		theadstr += '<th>' + groupTagFilter.key + 'タグ</th>';
-		theadstr += '<th class="padLR">InstanceType</th>';
-		theadstr += '<th>VPC</th>';
-		theadstr += '<th>AZ</th>';
-		theadstr += '<th data-dt-order="disable"><span class="btn_on_tr spanLink hovUL" id="link-getlatest">取得</span><br><span id="status_datetime">稼働状況</span></th>';
-		theadstr += '<th>起動～停止</th>';
-		theadstr += '<th>起動時間(h)</th>';
-		theadstr += '<th>最大<br>CPU%</th>';
-		theadstr += '<th id="thBar24h">0:00～24:00</th>';
+		theadstr += '<th rowspan="2" class="padLR">Nameタグ</th>';
+		theadstr += '<th rowspan="2">アカウント</th>';
+		theadstr += '<th rowspan="2">' + util.escapeHTML(categoryTag.label || '分類') + '</th>';
+		theadstr += '<th rowspan="2">' + groupTagFilter.key + 'タグ</th>';
+		theadstr += '<th rowspan="2" class="padLR">InstanceType</th>';
+		theadstr += '<th rowspan="2">VPC</th>';
+		theadstr += '<th rowspan="2">AZ</th>';
+		theadstr += '<th data-dt-order="disable"><span class="btn_on_tr spanLink hovUL" id="link-getlatest">取得</span></th>';
+		theadstr += '<th rowspan="2">起動～停止</th>';
+		theadstr += '<th rowspan="2">起動時間(h)</th>';
+		theadstr += '<th rowspan="2">最大<br>CPU%</th>';
+		theadstr += '<th rowspan="2" id="thBar24h">0:00～24:00</th>';
+		theadstr += '</tr><tr><th><span id="status_datetime">稼働状況</span></th>';
 	}else{
 		theadstr += '<th>日付</th>';
 		theadstr += '<th>何日前か</th>';
@@ -1144,7 +1150,7 @@ const loadCompleteHistFunc = (opt, tagname) => {
 				if(mystat.historyInstanceSvc === "EC2") {
 					startstopPromises.push(loadHistoryStartstopForLocalYmd(t2_strymd, 'ec2'));
 				}
-				else if(mystat.historyInstanceSvc === "RDS" && acc[accNo].instanceService.indexOf('RDS') >= 0){
+				else if(mystat.historyInstanceSvc === "RDS" && accountLoadsSvc(accNo, 'rds')){
 					startstopPromises.push(loadHistoryStartstopForLocalYmd(t2_strymd, 'rds'));
 				}else{
 					return Promise.resolve(null);
@@ -1920,15 +1926,15 @@ const drawHistoryMain = () => {
 const drawLegend = () => {
 
 	// 凡例表示
-	util.writeHtml(document.querySelector('#hanrei'), '<span class="fontmono"><span style="color:' + mystat.statColor.off + '; background-color:' + mystat.statColor.off + '">xx</span>:' + statusLabel.stopped +
+	util.writeHtml(document.querySelector('#hanrei'), '<span class="fontmono"><span style="color:' + mystat.statColor.off + '; background-color:' + mystat.statColor.off + '">xx</span>' + statusLabel.stopped +
 		'<span class="sp"></span>' +
-		'<span style="color:' + mystat.statColor.on +  '; background-color:' + mystat.statColor.on + '">oo</span>:' + statusLabel.running +
+		'<span style="color:' + mystat.statColor.on +  '; background-color:' + mystat.statColor.on + '">oo</span>' + statusLabel.running +
 		'<span class="sp"></span>' +
-		'<span class="b" style="color:' + mystat.statColor.fullText + '; background-color:' + mystat.statColor.full + ';">FU</span>:Storage-Full(RDS)' + 
+		'<span class="b" style="color:' + mystat.statColor.fullText + '; background-color:' + mystat.statColor.full + ';">FU</span>Storage-Full(RDS)' + 
 		'<span class="sp"></span>' +
-		'<span class="b" style="color:' + mystat.statColor.impairedText +  '; background-color:' + mystat.statColor.impaired + '">異</span>:' + statusLabel.impaired + 
+		'<span class="b" style="color:' + mystat.statColor.impairedText +  '; background-color:' + mystat.statColor.impaired + '">異</span>' + statusLabel.impaired + 
 		'<span class="sp"></span>' +
-		'<span class="b" style="color:' + mystat.statColor.terminatedText +  '; background-color:' + mystat.statColor.terminated + '">Te</span>:' + statusLabel.terminated + 
+		'<span class="b" style="color:' + mystat.statColor.terminatedText +  '; background-color:' + mystat.statColor.terminated + '">Te</span>' + statusLabel.terminated + 
 		'<span class="sp"></span><span class="cpu_legend"></span>' + 
 		':<label><input type="checkbox" id="chk_cpu_util">CPU使用率(0-100%)</label></span><span class="sp"></span>');
 
@@ -1949,10 +1955,10 @@ var onLoad = function(fHtml)
 	mystat.fromHtml = fHtml;
 	let cpuGraphWH = { w: 740, h: 220 };
 
-	document.querySelector('#TitleInstance').innerText = acc[accNo].instanceService.join("/");
+	document.querySelector('#TitleInstance').innerText = ['EC2', ...(acc[accNo]?.additionalService || [])].join("/");
 	renderDemoMessage();
 
-	document.title = (acc[accNo].selectAccountDisp || accNo) + ' ' + document.title;
+	document.title = (acc[accNo].accountName || accNo) + ' ' + document.title;
 
 	// index.html固有の初期化1
 	if(mystat.fromHtml === mystat.fromPattern[0]){

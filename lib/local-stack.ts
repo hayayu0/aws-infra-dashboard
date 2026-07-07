@@ -10,8 +10,9 @@ import { readLambdaSourceInlineCode } from './inline-lambda-code';
 
 export interface LocalStackProps extends cdk.StackProps {
   toolNamePrefix: string;
-  accountId: string;
+  subDir: string;
   accountDisplayName: string;
+  additionalService: string[];
   regionalRegion: string;
   regions: string[];
   timeZone: string;
@@ -50,7 +51,7 @@ export class LocalStack extends cdk.Stack {
       },
     });
 
-    const generatedConfigJs = this.generatedConfigJs(props.accountId, props.accountDisplayName, props.regions);
+    const generatedConfigJs = this.generatedConfigJs(props.subDir, props.accountDisplayName, props.additionalService, props.regions);
     const webSourceAsset = new s3assets.Asset(this, 'WebSourceAsset', {
       path: path.join(process.cwd(), 'src', 'web'),
     });
@@ -154,7 +155,7 @@ export class LocalStack extends cdk.Stack {
           source_cidr_list: '0.0.0.0/0 ::/0',
           s3_bucket: bucket.ref,
           default_region: props.regionalRegion,
-          ACCOUNT_ID: props.accountId,
+          SUBDIR: props.subDir,
         },
       },
       functionName: `${props.toolNamePrefix}-describe-api`,
@@ -229,7 +230,7 @@ export class LocalStack extends cdk.Stack {
       timeout: 30,
       environment: {
         S3_BUCKET: bucket.ref,
-        ACCOUNT_ID: props.accountId,
+        SUBDIR: props.subDir,
         REGION_LIST: props.regions.join(','),
       },
     });
@@ -242,7 +243,7 @@ export class LocalStack extends cdk.Stack {
       timeout: 30,
       environment: {
         S3_BUCKET: bucket.ref,
-        ACCOUNT_ID: props.accountId,
+        SUBDIR: props.subDir,
         REGION_LIST: props.regions.join(','),
       },
     });
@@ -336,21 +337,25 @@ export class LocalStack extends cdk.Stack {
     });
   }
 
-  private generatedConfigJs(accountId: string, accountDisplayName: string, regions: string[]): string {
+  private generatedConfigJs(subDir: string, accountDisplayName: string, additionalService: string[], regions: string[]): string {
     const configPath = path.join(process.cwd(), 'src', 'web', 'common_script', 'config.js');
     const source = fs.readFileSync(configPath, 'utf8');
     const regionsSource = regions.map((region) => JSON.stringify(region)).join(', ');
-    const accountPattern = /"[^"]+"(\s*:\s*\{\s*\r?\n\s*"selectAccountDisp"\s*:\s*)"[^"]*"([\s\S]*?\r?\n\s*"regions"\s*:\s*)\[[^\]]*\]/;
+    const additionalServiceSource = additionalService.length > 0 ? `[ ${additionalService.map((service) => JSON.stringify(service)).join(', ')} ]` : '[]';
 
-    if (!accountPattern.test(source)) {
-      throw new Error('src/web/common_script/config.js must define an account with selectAccountDisp and regions.');
-    }
+    const replaceOrThrow = (text: string, pattern: RegExp, replacement: (prefix: string) => string, label: string): string => {
+      if (!pattern.test(text)) {
+        throw new Error(`src/web/common_script/config.js pattern not found: ${label}`);
+      }
+      return text.replace(pattern, (_match, prefix) => replacement(prefix));
+    };
 
-    return source.replace(
-      accountPattern,
-      (_match, accountSuffix, regionsPrefix) =>
-        `${JSON.stringify(accountId)}${accountSuffix}${JSON.stringify(accountDisplayName)}${regionsPrefix}[ ${regionsSource} ]`,
-    );
+    let text = source;
+    text = replaceOrThrow(text, /("accountName"\s*:\s*)"[^"]*"/, (prefix) => `${prefix}${JSON.stringify(accountDisplayName)}`, 'accounts accountName');
+    text = replaceOrThrow(text, /("additionalService"\s*:\s*)\[[^\]]*\]/, (prefix) => `${prefix}${additionalServiceSource}`, 'accounts additionalService');
+    text = replaceOrThrow(text, /("regions"\s*:\s*)\[[^\]]*\]/, (prefix) => `${prefix}[ ${regionsSource} ]`, 'accounts regions');
+    text = replaceOrThrow(text, /("subDir"\s*:\s*)"[^"]*"/, (prefix) => `${prefix}${JSON.stringify(subDir)}`, 'accounts subDir');
+    return text;
   }
 
   private contentHash(content: string): string {

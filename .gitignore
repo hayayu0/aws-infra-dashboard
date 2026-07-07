@@ -6,3 +6,4 @@ dist/
 work/
 AGENTS.md
 CLAUDE.md
+src/lambda-python/__pycache__/

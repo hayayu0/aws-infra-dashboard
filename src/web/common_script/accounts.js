@@ -1,15 +1,19 @@
 ﻿
 'use strict';
 
-const acc = window.appConfig?.accounts || {};
-const hasMultipleAccounts = Object.keys(acc).length > 1;
+const acc = window.normalizeAccountConfigs(window.appConfig?.accounts);
+const accountIds = Object.keys(acc);
+const hasMultipleAccounts = accountIds.length > 1;
 const requestedAccNo = new URLSearchParams(window.location.search).get('account');
-const accNo = (requestedAccNo && acc[requestedAccNo]) ? requestedAccNo : '1';
+const defaultAccNo = accountIds[0] || '';
+const accNo = (requestedAccNo && acc[requestedAccNo]) ? requestedAccNo : defaultAccNo;
 const accountDisplayOptions = Object.entries(acc).filter(([k, v]) => k === accNo || !v.hideDropDown);
+const accountLabel = (accountId) => acc[accountId]?.accountName || accountId;
+const accountIdByLabel = (label) => accountIds.find(accountId => accountLabel(accountId) === label);
 const requestedDisplayAccounts = (new URLSearchParams(window.location.search).get('accounts') || '')
 	.split(',')
-	.map(v => v.trim())
-	.filter(v => acc[v] && accountDisplayOptions.some(([k]) => k === v));
+	.map(v => accountIdByLabel(v.trim()))
+	.filter(v => v && accountDisplayOptions.some(([k]) => k === v));
 let selectedAccountIds = requestedDisplayAccounts.length > 0 ? [...new Set(requestedDisplayAccounts)] : accountDisplayOptions.map(([k]) => k);
 
 if(!acc[accNo]){
@@ -24,18 +28,18 @@ const jumptoOtherAccount = (toAccNo) => {
 	location.href = location.pathname + '?' + currentSearchParams.toString().replace(/%2C/g, ',');
 }
 
-const accountDisplayText = () => selectedAccountIds.map(k => acc[k]?.selectAccountDisp || k).join(', ');
+const accountDisplayText = () => selectedAccountIds.map(accountLabel).join(', ');
 const syncSelectedAccountCheckboxes = () => {
 	document.querySelectorAll('.sel_accounts_chk').forEach((checkbox) => {
 		checkbox.checked = selectedAccountIds.includes(checkbox.value);
 	});
 }
-const updateSelectedAccounts = (accountIds) => {
-	selectedAccountIds = accountDisplayOptions.map(([k]) => k).filter(k => accountIds.includes(k));
+const updateSelectedAccounts = (checkedAccountIds) => {
+	selectedAccountIds = accountDisplayOptions.map(([k]) => k).filter(k => checkedAccountIds.includes(k));
 	const disp = document.querySelector('#account_disp');
 	if(disp) disp.innerText = accountDisplayText();
 	const params = new URLSearchParams(location.search);
-	params.set('accounts', selectedAccountIds.join(','));
+	params.set('accounts', selectedAccountIds.map(accountLabel).join(','));
 	history.replaceState('', '', location.pathname + '?' + params.toString().replace(/%2C/g, ',') + location.hash);
 	if(typeof util !== 'undefined' && util.clickReloadTableButton) util.clickReloadTableButton(10);
 }
@@ -51,7 +55,7 @@ window.addEventListener('pageshow', (event) => {
 	}
 
 	const accountSelectHtml = (options, selectedValue, firstOptionHtml = '') => {
-		const optionHtml = options.map(([k, v]) => `<option value="${k}"${k === selectedValue ? ' selected' : ''}>${v.selectAccountDisp}`).join('');
+		const optionHtml = options.map(([k, v]) => `<option value="${k}"${k === selectedValue ? ' selected' : ''}>${v.accountName}`).join('');
 		return '<select id="SelectAccount" onChange="jumptoOtherAccount(this.value);">' + firstOptionHtml + optionHtml + '</select>';
 	};
 
@@ -73,7 +77,7 @@ window.addEventListener('pageshow', (event) => {
 				'<div id="AccountOptionBoxMain"><label id="SelAccountsLabel"><span class="spLR">アカウント選択</span><div id="sel_accounts"></div></label></div></div>'
 			);
 			accountDisplayOptions.forEach(([k, v]) => {
-				$('#sel_accounts').append('<label class="nowrap" style="display:block;margin:0 0 4px 0;"><input type="checkbox" class="sel_accounts_chk" value="' + k + '"> ' + (v.selectAccountDisp || k) + '</label>');
+				$('#sel_accounts').append('<label class="nowrap" style="display:block;margin:0 0 4px 0;"><input type="checkbox" class="sel_accounts_chk" value="' + k + '"> ' + (v.accountName || k) + '</label>');
 			});
 			$('#account_options_open_btn').click(() => {
 				syncSelectedAccountCheckboxes();
@@ -87,13 +91,13 @@ window.addEventListener('pageshow', (event) => {
 				$('#AccountOptionBox').addClass('fadeIn');
 			});
 			$('#AccountOptionBoxApply').on('click', (event) => {
-				const accountIds = Array.from(document.querySelectorAll('.sel_accounts_chk:checked')).map(v => v.value);
-				if(accountIds.length === 0){
+				const checkedAccountIds = Array.from(document.querySelectorAll('.sel_accounts_chk:checked')).map(v => v.value);
+				if(checkedAccountIds.length === 0){
 					alert('アカウントを1つ以上選択してください。');
 					event.stopImmediatePropagation();
 					return false;
 				}
-				updateSelectedAccounts(accountIds);
+				updateSelectedAccounts(checkedAccountIds);
 			});
 			$('.AccountOptionBoxCloseBtn').on('click', () => {
 				$('#AccountOptionBox').removeClass('fadeIn');
