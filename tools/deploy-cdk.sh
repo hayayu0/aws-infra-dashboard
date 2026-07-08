@@ -314,7 +314,7 @@ npx cdk deploy "$GLOBAL_STACK_NAME" \
 distribution_id="$(get_stack_output "$GLOBAL_STACK_NAME" "us-east-1" CloudFrontDistributionId)"
 distribution_arn="$(get_stack_output "$GLOBAL_STACK_NAME" "us-east-1" CloudFrontDistributionArn)"
 tool_url="$(get_stack_output "$GLOBAL_STACK_NAME" "us-east-1" ToolUrl)"
-tool_root_url="${tool_url%/web/infra-dashboard/index.html}/"
+tool_root_url="${tool_url%/web/infra_dashboard/index.html}/"
 
 if [ -z "$distribution_arn" ] || [ "$distribution_arn" = "None" ]; then
     echo "CloudFrontDistributionArn output was not found." >&2

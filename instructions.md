@@ -22,21 +22,23 @@ npm --version
 aws --version
 ```
 
-# リポジトリをクローン
+# セットアップ
+
+## リポジトリをクローン
 
 ```
 cd <リポジトリを配置するディレクトリ>
 git clone https://github.com/hayayu0/aws-infra-dashboard aws-infra-dashboard
 ```
 
-# npm依存をインストール
+## npm依存をインストール
 
 ```
 cd aws-infra-dashboard
 npm ci
 ```
 
-# AWSにログイン
+## AWSにログイン
 
 以下は例ですので、各環境で適切な方法でログインしてください。
 
@@ -45,7 +47,21 @@ aws login
 aws sts get-caller-identity
 ```
 
-# デプロイ
+## CDK Bootstrap
+
+CDK は「AWSアカウント × リージョン」ごとに一度だけ bootstrap が必要です。  
+このツールはメインリージョンと `us-east-1` の2リージョンにスタックを作成するため、デプロイ先アカウントで両方を bootstrap します。
+
+```
+npx cdk bootstrap aws://<accountId>/メインのリージョン(例：ap-northeast-1)
+npx cdk bootstrap aws://<accountId>/us-east-1
+```
+
+- メインのリージョンは、後のデプロイ処理で `--regional-region` オプションで指定します。
+- `<accountId>` はデプロイ先の AWS アカウントID（12桁）。`aws sts get-caller-identity` の `Account` で確認できます。
+- 2行目の `us-east-1` は CloudFront/WAF（`-global` スタック）用で、`regional-region` に関わらず常に必要です。
+
+## デプロイ
 
 CDKを使ってデプロイします。  
 CDKは上記の `npm ci` でインストールされています。  
@@ -104,36 +120,23 @@ CDKは上記の `npm ci` でインストールされています。
 - `enable-ip-allow-list` を true にして `allowed-ipv4-cidr` / `allowed-ipv6-cidr` に値を入れることで、CloudFront/WAFでIP制限できます。
 - `tag-category` を含むオプションはドロップダウンに関係します。特に `tag-category-selections` の値は `Production,Development,Staging,*` のようにカンマ区切りで指定しますが、デプロイ後に直接 config.js を直接編集してもよいです。
 
-# デプロイ完了確認
+## デプロイ完了確認
 
-CDKの実行が最後まで完了したことを確認します。
-
+CDKの実行が最後まで完了したことを確認します。  
 途中で `FAILED` や `ROLLBACK` が出た場合は、表示されたエラーを確認してから再実行してください。
 
-確認ポイントは以下です。
-
-- コマンドがエラー終了していないこと
-- CloudFormation のスタック作成または更新が完了していること
-- CloudFront の URL が出力されていること
-- `aws s3 sync` が失敗していないこと
-
-# Webページ確認
-
-デプロイ後、以下の URL にアクセスしてページが開くことを確認します。
+デプロイ後、以下の URL にアクセスしてページが開くことを確認します。  
+URLのドメインは、デプロイ実行時の途中の出力結果にありますので、そこから取得します。
 
 ```
-https://xxxxxxxxxx.cloudfront.net/web/infra-dashboard/index.html
+https://xxxxxxxxxx.cloudfront.net/web/infra_dashboard/index.html
 ```
-
-以下を確認します。
-
-- ブラウザでページが開くこと
-- インスタンス一覧の画面が表示されること
-- アカウント、リージョン、タグの表示が想定どおりであること
 
 IP制限を有効にした場合は、許可したIPアドレスからアクセスしてください。
 
-# config.js の編集
+# カスタム設定
+
+## config.js の編集
 
 画面表示のデフォルト値やタグの扱いを変更したい場合は、必要に応じて以下を編集します。
 
@@ -151,54 +154,52 @@ src/web/common_script/config.js
 
 編集後は、再度 CDK デプロイを実行して Web ファイルを反映してください。
 
-# 削除・後始末
+## マルチアカウント対応
 
-不要になった場合は、作成したAWSリソースを削除します。以下は既定の `infra-dashboard` / `ap-northeast-1` でデプロイした場合の例です。`ToolNamePrefix` や `RegionalRegion` を変えた場合は、同じ値に読み替えてください。
+複数のAWSアカウントを、1つのダッシュボード画面から切り替えて表示できます。  
+各アカウントは独立してデプロイし（アカウントごとに専用のS3バケット・CloudFront・Lambdaを持つ）、入口にする代表AWSアカウントの `config.js` に全アカウントを登録します。
 
-まずS3バケット名を確認します。
+1. 表示したいアカウントごとに、これまでと同じ手順（`aws login` → `CDK Bootstrap` → `デプロイ`）を実行します。認証（プロファイル）はアカウントごとに切り替えます。`--account-display-name` に画面表示名を指定し、デプロイ完了時に出力される CloudFront の URL を控えておきます。
 
-```powershell
-$ToolNamePrefix = "infra-dashboard"
-$RegionalRegion = "ap-northeast-1"
-$LocalStackName = "$ToolNamePrefix-local"
-$GlobalStackName = "$ToolNamePrefix-global"
+2. 入口にするアカウントの `src/web/common_script/config.js` をエディターで開き、`accounts` 配列に各アカウントを登録します。
 
-$BucketName = aws cloudformation describe-stacks `
-  --stack-name $LocalStackName `
-  --region $RegionalRegion `
-  --query "Stacks[0].Outputs[?OutputKey=='ToolBucketName'].OutputValue | [0]" `
-  --output text
+```js
+accounts: [
+  {
+    "accountName": "アカ1",
+    "additionalService": ["RDS"],
+    "regions": [ "ap-northeast-1", "ap-northeast-3" ],
+    "urlRoot": window.location.origin + "/",
+    "subDir": ""
+  },
+  {
+    "accountName": "アカ2",
+    "additionalService": ["RDS"],
+    "regions": [ "ap-northeast-1" ],
+    "urlRoot": "https://yyyyyyyyyy.cloudfront.net/",
+    "subDir": ""
+  }
+]
 ```
 
-CloudFront/WAF側のglobalスタックを削除します。
+- `accountName`: 画面のアカウント切替に表示する名前。
+- `urlRoot`: そのアカウントのデータ取得元。入口アカウント自身は `window.location.origin + "/"`、他アカウントは手順1で控えた CloudFront の URL（末尾スラッシュ必須）を指定します。
+- `regions`: そのアカウントで表示するリージョン。
+- `additionalService`: 取得する追加サービス。RDSが不要なら `[]` にします。
+- `subDir`: 通常は空。1つのバケットを用途別に分ける場合のみ指定します。
 
-```powershell
-npx cdk destroy $GlobalStackName `
-  --force `
-  --context toolNamePrefix=$ToolNamePrefix `
-  --context region=$RegionalRegion
-```
+3. 入口アカウントを再デプロイして、編集した `config.js` を反映します。
 
-S3バケットが空でないとlocalスタック削除に失敗するため、不要なデータであることを確認してからバケット内を空にします。
+補足
 
-```powershell
-aws s3 rm "s3://$BucketName" --recursive
-```
+- `accounts` の先頭エントリは、デプロイ時に `--account-display-name` などの指定値で上書きされます。追加するアカウントは2件目以降に記述してください。
+- 各アカウントの画面は、それぞれの CloudFront URL から個別に開くこともできます。IP制限を有効にしている場合は、各アカウントの許可IPからアクセスしてください。
 
-最後にlocalスタックを削除します。
+# 削除
 
-```powershell
-npx cdk destroy $LocalStackName `
-  --force `
-  --context toolNamePrefix=$ToolNamePrefix `
-  --context region=$RegionalRegion
-```
+不要になった場合は、作成したAWSリソースを以下の順で削除します。
 
-削除後は、CloudFormationで両方のスタックが消えていることを確認します。
-
-```powershell
-aws cloudformation describe-stacks --stack-name $GlobalStackName --region us-east-1
-aws cloudformation describe-stacks --stack-name $LocalStackName --region $RegionalRegion
-```
-
-削除済みであれば `does not exist` 系のエラーになります。あわせて、S3、CloudFront、Lambda、EventBridge Scheduler、WAFに対象リソースが残っていないことをAWSコンソールで確認してください。
+1. CloudFront/WAF側のglobalスタックを削除します。
+2. Eventbridgeのスケジューラーを無効化します。
+3. S3バケットが空でないとlocalスタック削除に失敗するため、不要なデータであることを確認してからバケット内を空にします。
+4. localスタックを削除します。
