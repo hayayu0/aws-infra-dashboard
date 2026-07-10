@@ -65,7 +65,7 @@ npx cdk bootstrap aws://<accountId>/us-east-1
 
 CDKを使ってデプロイします。  
 CDKは上記の `npm ci` でインストールされています。  
-以下はフルオプションを付けた場合です。下記のコマンド例の値はデフォルト値を記載しています。
+以下は指定可能な全オプションを付けた場合です。値を取るオプションはデフォルト値を記載しています。`skip-invalidation` は指定するとCloudFront invalidationを省略するスイッチです。
 
 - tag-category-label は Web 画面上の分類ラベルです。
 - tag-category-selections は tag-category の選択肢をカンマ区切りで指定します。`*` は「全て(タグ無し含む)」になります。
@@ -75,7 +75,8 @@ CDKは上記の `npm ci` でインストールされています。
 ```bash
 ./tools/deploy-cdk.sh \
   --tool-name-prefix infra-dashboard \
-  --account-id 1 \
+  --sub-dir "" \
+  --additional-service RDS \
   --account-display-name "アカ1" \
   --regional-region ap-northeast-1 \
   --other-regions "" \
@@ -84,18 +85,20 @@ CDKは上記の `npm ci` でインストールされています。
   --tag-category-label "環境" \
   --tag-category-selections "*" \
   --tag-category2 Application \
-  --enable-ip-allow-list false \
   --allowed-ipv4-cidr "" \
   --allowed-ipv6-cidr "" \
-  --profile ""
+  --enable-ip-allow-list false \
+  --profile "" \
+  --skip-invalidation
 ```
 
-**フルオプションの例　Powershell版**
+**フルオプションの例　PowerShell版**
 
 ```powershell
 .\tools\deploy-cdk.ps1 `
   -ToolNamePrefix infra-dashboard `
-  -AccountId 1 `
+  -SubDir "" `
+  -AdditionalService RDS `
   -AccountDisplayName "アカ1" `
   -RegionalRegion ap-northeast-1 `
   -OtherRegions "" `
@@ -104,21 +107,25 @@ CDKは上記の `npm ci` でインストールされています。
   -TagCategoryLabel "環境" `
   -TagCategorySelections "*" `
   -TagCategory2 Application `
-  -EnableIpAllowList false `
   -AllowedIpV4Cidr "" `
   -AllowedIpV6Cidr "" `
-  -Profile ""
+  -EnableIpAllowList false `
+  -Profile "" `
+  -SkipInvalidation
 ```
 
 オプション設定のポイント
 
 - オプションを1つも付与しなくても動作します。
 - `tool-name-prefix` はあちこちのリソースに埋め込まれるため、後で変更不可です。
+- `sub-dir` はS3保存先のサブディレクトリです。通常は空です。
+- `additional-service` はEC2以外に取得するサービスをカンマ区切りで指定します。RDSが不要なら空文字を指定します。
 - 複数リージョンがある場合は、`regional-region` にメインとしたいリージョン、`other-regions` にメイン以外のリージョンをカンマ区切りで指定します。
 - Webツール上で、ドロップダウンで絞り込み切り替えたいタグを `tag-category` で指定します。
 - `tag-category2` はクエリ文字列でフィルターに使いたいタグです。一覧にも列として表示されます。
 - `enable-ip-allow-list` を true にして `allowed-ipv4-cidr` / `allowed-ipv6-cidr` に値を入れることで、CloudFront/WAFでIP制限できます。
-- `tag-category` を含むオプションはドロップダウンに関係します。特に `tag-category-selections` の値は `Production,Development,Staging,*` のようにカンマ区切りで指定しますが、デプロイ後に直接 config.js を直接編集してもよいです。
+- `skip-invalidation` を指定すると、S3同期後のCloudFront invalidationをスキップします。
+- `tag-category` を含むオプションはドロップダウンに関係します。特に `tag-category-selections` の値は `Production,Development,Staging,*` のようにカンマ区切りで指定しますが、デプロイ後に config.js を直接編集してもよいです。
 
 ## デプロイ完了確認
 

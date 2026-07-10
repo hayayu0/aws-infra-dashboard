@@ -62,7 +62,8 @@ npm ci
 npx cdk bootstrap aws://<AWS_ACCOUNT_ID>/ap-northeast-1
 npx cdk bootstrap aws://<AWS_ACCOUNT_ID>/us-east-1
 aws login
-(bashの場合) sh ./tools/deploy-cdk.sh
+(bashの場合) chmod +x ./tools/deploy-cdk.sh
+(bashの場合) ./tools/deploy-cdk.sh
 (PowerShellの場合) .\tools\deploy-cdk.ps1
 ```
 
