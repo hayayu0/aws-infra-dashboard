@@ -335,7 +335,6 @@ Invoke-Cdk $globalDeployArgs
 $distributionId = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "CloudFrontDistributionId"
 $distributionArn = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "CloudFrontDistributionArn"
 $toolUrl = Get-StackOutput -Stack $globalStackName -Region "us-east-1" -OutputKey "ToolUrl"
-$toolRootUrl = $toolUrl -replace '/web/infra_dashboard/index\.html$', '/'
 
 if (!$distributionArn -or $distributionArn -eq "None") {
     throw "CloudFrontDistributionArn output was not found."
@@ -343,6 +342,11 @@ if (!$distributionArn -or $distributionArn -eq "None") {
 
 if (!$toolUrl -or $toolUrl -eq "None") {
     throw "ToolUrl output was not found."
+}
+if ($toolUrl -match '/web/index\.html$') {
+    $toolRootUrl = $toolUrl -replace '/web/index\.html$', '/'
+} else {
+    $toolRootUrl = $toolUrl.TrimEnd('/') + '/'
 }
 
 $deployArgs = @(
@@ -376,7 +380,7 @@ Invoke-Cdk $deployArgs
 $stagedWebRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("$ToolNamePrefix-web-" + [guid]::NewGuid().ToString("N"))
 Copy-Item -LiteralPath ".\src\web" -Destination $stagedWebRoot -Recurse
 Update-WebConfig `
-    -ConfigPath (Join-Path $stagedWebRoot "common_script\config.js") `
+    -ConfigPath (Join-Path $stagedWebRoot "style\config.js") `
     -ToolRootUrl $toolRootUrl `
     -SubDir $SubDir `
     -AdditionalService $AdditionalService `

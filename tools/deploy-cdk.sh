@@ -314,7 +314,6 @@ npx cdk deploy "$GLOBAL_STACK_NAME" \
 distribution_id="$(get_stack_output "$GLOBAL_STACK_NAME" "us-east-1" CloudFrontDistributionId)"
 distribution_arn="$(get_stack_output "$GLOBAL_STACK_NAME" "us-east-1" CloudFrontDistributionArn)"
 tool_url="$(get_stack_output "$GLOBAL_STACK_NAME" "us-east-1" ToolUrl)"
-tool_root_url="${tool_url%/web/infra_dashboard/index.html}/"
 
 if [ -z "$distribution_arn" ] || [ "$distribution_arn" = "None" ]; then
     echo "CloudFrontDistributionArn output was not found." >&2
@@ -324,6 +323,11 @@ fi
 if [ -z "$tool_url" ] || [ "$tool_url" = "None" ]; then
     echo "ToolUrl output was not found." >&2
     exit 1
+fi
+if [[ "$tool_url" == */web/index.html ]]; then
+    tool_root_url="${tool_url%/web/index.html}/"
+else
+    tool_root_url="${tool_url%/}/"
 fi
 
 npx cdk deploy "$LOCAL_STACK_NAME" \
@@ -343,7 +347,7 @@ trap 'rm -rf "$staged_web_root"' EXIT
 cp -R "$WEB_ROOT"/. "$staged_web_root"/
 
 timezone_offset="$(get_timezone_offset_hours "$TIME_ZONE")"
-update_web_config "$staged_web_root/common_script/config.js" "$tool_root_url" "$timezone_offset"
+update_web_config "$staged_web_root/style/config.js" "$tool_root_url" "$timezone_offset"
 
 aws "${AWS_PROFILE_ARGS[@]}" s3 sync "$staged_web_root" "s3://$bucket/web/" --delete
 

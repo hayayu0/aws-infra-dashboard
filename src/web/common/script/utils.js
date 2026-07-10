@@ -4,6 +4,33 @@ const util = {
 	writeHtml: (selectorOrElem, html) => {
 		const el = (typeof selectorOrElem === 'string') ? document.querySelector(selectorOrElem) : selectorOrElem;
 		if (el) el.innerHTML = html;
+	},
+
+	config: {
+		regions: [
+			{id:"ap-northeast-1", grp:"アジアパシフィック", location:"東京"},
+			{id:"ap-northeast-3", grp:"アジアパシフィック", location:"大阪"},
+			{id:"ap-southeast-1", grp:"アジアパシフィック", location:"シンガポール"},
+			{id:"ap-northeast-2", grp:"アジアパシフィック", location:"ソウル"},
+			{id:"ap-southeast-2", grp:"アジアパシフィック", location:"シドニー"},
+			{id:"ap-south-1", grp:"アジアパシフィック", location:"ムンバイ"},
+			{id:"us-east-1", grp:"米国東部", location:"バージニア北部"},
+			{id:"us-west-1", grp:"米国西部", location:"北カリフォルニア"},
+			{id:"us-east-2", grp:"米国東部", location:"オハイオ"},
+			{id:"us-west-2", grp:"米国西部", location:"オレゴン"},
+			{id:"ca-central-1", grp:"カナダ", location:"中部"},
+			{id:"eu-central-1", grp:"欧州", location:"フランクフルト"},
+			{id:"eu-west-1", grp:"欧州", location:"アイルランド"},
+			{id:"eu-west-2", grp:"欧州", location:"ロンドン"},
+			{id:"eu-west-3", grp:"欧州", location:"パリ"},
+			{id:"eu-north-1", grp:"欧州", location:"ストックホルム"},
+			{id:"sa-east-1", grp:"南米", location:"サンパウロ"}
+		],
+
+		darkMode: {
+			selectors: 'body, .dataTable > tbody td, .HeaderBarBlock, .dataTables_filter label, .dataTables_length, .dataTables_info, .dataTables_paginate, .dataTables_filter label, .dataTables_length, .dataTables_info, .defcol, .blue, .red, .green, .fadeInBox, #ColumnVisibleChecks',
+			defaultColorSelectors: 'body, .dataTable > tbody td, .dataTables_filter label, .dataTables_length, .dataTables_info, .fadeInBox'
+		}
 	}
 };
 
@@ -23,34 +50,6 @@ window.normalizeAccountConfigs = normalizeAccountConfigs;
 
 const demoNow = window.appConfig.demo?.now || null;
 
-const toolConfig = {
-
-	regions: [
-		{id:"ap-northeast-1", grp:"アジアパシフィック", location:"東京"},
-		{id:"ap-northeast-3", grp:"アジアパシフィック", location:"大阪"},
-		{id:"ap-southeast-1", grp:"アジアパシフィック", location:"シンガポール"},
-		{id:"ap-northeast-2", grp:"アジアパシフィック", location:"ソウル"},
-		{id:"ap-southeast-2", grp:"アジアパシフィック", location:"シドニー"},
-		{id:"ap-south-1", grp:"アジアパシフィック", location:"ムンバイ"},
-		{id:"us-east-1", grp:"米国東部", location:"バージニア北部"},
-		{id:"us-west-1", grp:"米国西部", location:"北カリフォルニア"},
-		{id:"us-east-2", grp:"米国東部", location:"オハイオ"},
-		{id:"us-west-2", grp:"米国西部", location:"オレゴン"},
-		{id:"ca-central-1", grp:"カナダ", location:"中部"},
-		{id:"eu-central-1", grp:"欧州", location:"フランクフルト"},
-		{id:"eu-west-1", grp:"欧州", location:"アイルランド"},
-		{id:"eu-west-2", grp:"欧州", location:"ロンドン"},
-		{id:"eu-west-3", grp:"欧州", location:"パリ"},
-		{id:"eu-north-1", grp:"欧州", location:"ストックホルム"},
-		{id:"sa-east-1", grp:"南米", location:"サンパウロ"}
-	],
-
-	darkMode: {
-		selectors: 'body, .dataTable > tbody td, .HeaderBarBlock, .dataTables_filter label, .dataTables_length, .dataTables_info, .dataTables_paginate, .dataTables_filter label, .dataTables_length, .dataTables_info, .defcol, .blue, .red, .green, .fadeInBox, #ColumnVisibleChecks',
-		defaultColorSelectors: 'body, .dataTable > tbody td, .dataTables_filter label, .dataTables_length, .dataTables_info, .fadeInBox'
-	}
-};
-
 // ページごとに独立したLocalStorageキーを生成するヘルパー
 const reversePath = location.pathname.split('/').reverse();
 const createLocalStorageKey = (key) => reversePath[1] + '-' + reversePath[0].split('.')[0] + '-' + key;
@@ -65,11 +64,11 @@ const accountConfigForRegions = accountConfigsForRegions[requestedAccountForRegi
 const configuredRegionIds = Object.values(accountConfigsForRegions).flatMap(accountConfig => Array.isArray(accountConfig.regions) ? accountConfig.regions : []);
 const ownRegionId = (() => {
 	const ownRegions = Array.isArray(accountConfigForRegions.regions) ? accountConfigForRegions.regions : [];
-	return ownRegions[accountConfigForRegions.instanceRegionId || 0] || ownRegions[0] || toolConfig.regions[window.appConfig.defaultRegionId]?.id || toolConfig.regions[0]?.id || '';
+	return ownRegions[accountConfigForRegions.instanceRegionId || 0] || ownRegions[0] || util.config.regions[window.appConfig.defaultRegionId]?.id || util.config.regions[0]?.id || '';
 })();
 const availableRegionIds = [...new Set([...configuredRegionIds, ownRegionId].filter(v => v))];
-const availableRegions = (availableRegionIds.length > 0 ? availableRegionIds : toolConfig.regions.map(region => region.id))
-	.map(regionId => toolConfig.regions.find(region => region.id === regionId) || { id:regionId, grp:'', location:regionId })
+const availableRegions = (availableRegionIds.length > 0 ? availableRegionIds : util.config.regions.map(region => region.id))
+	.map(regionId => util.config.regions.find(region => region.id === regionId) || { id:regionId, grp:'', location:regionId })
 	.filter(region => region.id);
 const selectedRegionIdFromUrl = (() => {
 	const regionParam = new URLSearchParams(window.location.search).get('region');
@@ -89,9 +88,6 @@ let tagnameFilterRegExp = new RegExp(tagnameFilter);
 
 // テーブル読み込みボタンが押されたときの呼び出すコールバック関数 空で初期化
 let callbackOnClickReloadTableButton = () => {};
-
-// 最新の情報を読み込むチェックボックス(1=はい, 0=いいえ, -1=未定義)
-let latestCheckboxState = -1;
 
 // 選択されたリソース(EC2/RDS)のValue
 let selectedSvcVal = '';
@@ -125,9 +121,9 @@ const youbiColorStyle = [ 'color:#ff5555;', '', '', '', '', '', 'color:#5555ff' 
 // darkselectorに指定しなくても、body、DataTable関連、色系クラス、.fadeInBox、#ColumnVisibleChecks あたりは組み込み済み
 //
 // Darkモード対応のデフォルトセレクタ
-let dk_slr = toolConfig.darkMode.selectors;
+let dk_slr = util.config.darkMode.selectors;
 // Darkモード対応かつデフォルト色(黒白)用のデフォルトセレクタ
-let dk_slrdef = toolConfig.darkMode.defaultColorSelectors;
+let dk_slrdef = util.config.darkMode.defaultColorSelectors;
 
 let tblcolCache = null;
 
@@ -542,52 +538,6 @@ util.clickReloadTableButton = (delay) => {
 
 
 // -------------------------------------------------------------
-// ajaxで取得した'Last-Modified'を取り出して更新日時を表示
-// opt.req: $.ajax系の .done(function(data,status,jqxhr)){ ... } のjqxhr(XMLHttpRequest)の値
-// opt.lastmodified: Last-Modified自体(opt.reqの代わり)
-// opt.selector: 表示先のセレクタID
-// opt.format: 表示フォーマットは自由記述  %Y, %y, %m, %0m, %d, %0d, %H, %0H, %M, %S, %jw を指定可能
-// opt.weekendcolor: True= 土曜は青色、日曜は赤色にする(%jw指定時)
-// opt.delaymsec: 表示遅延 msec
-// -------------------------------------------------------------
-util.dispLastUpdate = (opt) => {
-
-	if(!(opt.req || opt.lastmodified) || !opt.selector || !opt.format) return;
-
-	let delaymsec = (isNaN(opt.delaymsec)) ? 10 : opt.delaymsec;
-	let dispstr = '';
-
-	// 'Last-Modified' が取れたら更新日時の文字列を生成
-	if(opt.lastmodified || opt.req.getResponseHeader('Last-Modified')){
-
-		dispstr = opt.format;
-		let ti = new Date( opt.lastmodified || opt.req.getResponseHeader('Last-Modified') );
-
-		// %Y(年 4桁), %y(年 2桁), %m(月 0埋め無し), %0m(月 0埋め), %d(日 0埋め無し), %0d(日 0埋め), %H(時 0埋め無し), 
-		// %0H(時 0埋め), %M(分 0埋め), %S(秒 0埋め) を置換
-		dispstr = dispstr.replace('%y', ti.getYear()).replace('%Y', ti.getFullYear());
-		dispstr = dispstr.replace('%0m', ('0' + (ti.getMonth()+1)).slice(-2)).replace('%m', (ti.getMonth()+1));
-		dispstr = dispstr.replace('%0d', ('0' + (ti.getDate())).slice(-2)).replace('%d', ti.getDate());
-		dispstr = dispstr.replace('%0H', ('0' + (ti.getHours())).slice(-2)).replace('%H', ti.getHours());
-		dispstr = dispstr.replace('%M', ('0' + (ti.getMinutes())).slice(-2)).replace('%S', ('0' + (ti.getSeconds())).slice(-2));
-		// %jw(日～土) を置換
-		// opt.weekendcolorがある場合は %jw の置換前に色付け
-		if(opt.weekendcolor && ti.getDay() === 0) dispstr = dispstr.replace('%jw', '<span class="red">%jw</span>');
-		if(opt.weekendcolor && ti.getDay() === 6) dispstr = dispstr.replace('%jw', '<span class="blue">%jw</span>');
-		dispstr = dispstr.replace('%jw', youbiArr.charAt(ti.getDay()));
-	}
-
-	// 一旦クリア
-    const target = document.querySelector(opt.selector);
-	util.writeHtml(target, '');
-
-	setTimeout(() => {
-		util.writeHtml(target, '<span>' + dispstr + '</span>');
-	}, delaymsec);
-}
-
-
-// -------------------------------------------------------------
 // 曜日 (日)～(土) を色付きCSSで返す
 // dt：必要な日付のDateオブジェクト（nullなら今日）
 // -------------------------------------------------------------
@@ -783,7 +733,6 @@ util.DataTableWrap = (tbl, opt) => {
 			// 最新の情報を読み込むチェックボックスをOFFにする
 			if( $('#_check_nocache').length ){
 				$('#_check_nocache').prop('checked', false);
-				latestCheckboxState = 0;
 			}
 
 			// 更新前に入力されていた検索文字を検索ボックスに再設定する
@@ -815,27 +764,6 @@ util.DataTableWrap = (tbl, opt) => {
 	}
 
 	return tbl.DataTable(opt);
-}
-
-
-// -------------------------------------------------------------
-// Array.filter()で先頭要素の取り出し
-// 例:
-// arr = [ { "k2":10 }, { "k1":20, "k2":30 }, { "k1":15 } ]、keys = ["k1", "k2"]、values = [15, 30] とすると
-// "k2":30 が最初に合致するので { "k1":20, "k2":30 } が返る
-// -------------------------------------------------------------
-util.FilterFirst = (arr, keys, values) => {
-
-	if(!Array.isArray(arr)) return [];
-
-	const result = arr.find(v => {
-		for(let n = 0; n < keys.length; n++){
-			if(n < values.length && v[keys[n]] === values[n]) return true;
-		}
-		return false;
-	});
-
-	return result || [];
 }
 
 
@@ -1054,7 +982,7 @@ $(function(){
 		// 既にフェードアウト開始中ではないこと
 		if($(this).data('copied') !== 'true'){
 			// クリップボードへコピーするボタンを追加
-			$(this).append('<div style="display:inline-block; padding-left:5px; font-size:11px; cursor:default;" class="toClipBtn"><img src="' + urlHome + '/common_script/images/toclip.png"><span class="toClipMsg"></span></div>');
+			$(this).append('<div style="display:inline-block; padding-left:5px; font-size:11px; cursor:default;" class="toClipBtn"><img src="' + urlHome + '/images/toclip.png"><span class="toClipMsg"></span></div>');
 		}
 	});
 	// 対象文字(セレクタ class="toClip" or class="toClipDel")からカーソルが外れる
@@ -1159,10 +1087,6 @@ $(function(){
 		$('#CheckLatest').after(
 			'<label><input type="checkbox" id="_check_nocache">最新の' + ($('#CheckLatest').data('whatinfo') || '') + '情報を読み込む</label>'
 		);
-
-		$('#_check_nocache').change(function(){
-			latestCheckboxState = ( $(this).prop('checked') ? 1 : 0);
-		});
 	}
 
 	// ツールオプションの初期化

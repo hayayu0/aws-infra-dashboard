@@ -78,14 +78,7 @@ def build_s3_key(params, logtype=None):
     logtype: None(for cache), 'logonly'(for stored), 'ymd'(for stored with ymd)
     """
 
-    if logtype:
-        key_parts = ['stored']
-        if SUBDIR:
-            key_parts.append(SUBDIR)
-        key_parts.append(params['region'])
-    else:
-        key_parts = ['cache', params['region']]
-    key_prefix = '/'.join(key_parts) + '/'
+    key_prefix = ('stored/' if logtype else 'cache/') + (SUBDIR + '/' if SUBDIR else '') + params['region'] + '/'
     utc_now = datetime.utcnow()
     key_date = utc_now if logtype else utc_now + timedelta(hours=TIMEZONE_DELTA)
 

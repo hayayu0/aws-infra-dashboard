@@ -1,5 +1,4 @@
-﻿
-'use strict';
+﻿'use strict';
 
 const acc = window.normalizeAccountConfigs(window.appConfig?.accounts);
 const accountIds = Object.keys(acc);

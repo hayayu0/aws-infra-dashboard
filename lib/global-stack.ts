@@ -148,13 +148,24 @@ export class GlobalStack extends cdk.Stack {
       ],
     });
 
+    const webBucketDomainName = cdk.Fn.sub('${BucketName}.s3.${BucketRegion}.amazonaws.com', {
+      BucketName: toolBucketName.valueAsString,
+      BucketRegion: toolBucketRegion.valueAsString,
+    });
+
     const origins: cdk.aws_cloudfront.CfnDistribution.OriginProperty[] = [
       {
         id: 'web-bucket-origin',
-        domainName: cdk.Fn.sub('${BucketName}.s3.${BucketRegion}.amazonaws.com', {
-          BucketName: toolBucketName.valueAsString,
-          BucketRegion: toolBucketRegion.valueAsString,
-        }),
+        domainName: webBucketDomainName,
+        originPath: '/web',
+        originAccessControlId: webBucketOac.ref,
+        s3OriginConfig: {
+          originAccessIdentity: '',
+        },
+      },
+      {
+        id: 'data-bucket-origin',
+        domainName: webBucketDomainName,
         originAccessControlId: webBucketOac.ref,
         s3OriginConfig: {
           originAccessIdentity: '',
@@ -183,12 +194,46 @@ export class GlobalStack extends cdk.Stack {
         cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
         originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
       },
+      {
+        pathPattern: 'stored*',
+        targetOriginId: 'data-bucket-origin',
+        viewerProtocolPolicy: 'redirect-to-https',
+        allowedMethods: ['GET', 'HEAD'],
+        cachedMethods: ['GET', 'HEAD'],
+        compress: true,
+        cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
+        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
+        responseHeadersPolicyId: cdk.aws_cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT.responseHeadersPolicyId,
+      },
+      {
+        pathPattern: 'lambda*',
+        targetOriginId: 'data-bucket-origin',
+        viewerProtocolPolicy: 'redirect-to-https',
+        allowedMethods: ['GET', 'HEAD'],
+        cachedMethods: ['GET', 'HEAD'],
+        compress: true,
+        cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
+        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
+        responseHeadersPolicyId: cdk.aws_cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT.responseHeadersPolicyId,
+      },
+      {
+        pathPattern: 'web/*',
+        targetOriginId: 'data-bucket-origin',
+        viewerProtocolPolicy: 'redirect-to-https',
+        allowedMethods: ['GET', 'HEAD'],
+        cachedMethods: ['GET', 'HEAD'],
+        compress: true,
+        cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
+        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
+        responseHeadersPolicyId: cdk.aws_cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT.responseHeadersPolicyId,
+      },
     ];
 
     const distribution = new cdk.aws_cloudfront.CfnDistribution(this, 'ToolDistribution', {
       distributionConfig: {
         comment: cdk.Fn.sub('${AWS::StackName} EC2/RDS Stat'),
         enabled: true,
+        defaultRootObject: 'index.html',
         httpVersion: 'http2and3',
         priceClass: 'PriceClass_200',
         restrictions: {
@@ -222,7 +267,7 @@ export class GlobalStack extends cdk.Stack {
       }),
     });
     new cdk.CfnOutput(this, 'ToolUrl', {
-      value: cdk.Fn.sub('https://${DomainName}/web/infra_dashboard/index.html', {
+      value: cdk.Fn.sub('https://${DomainName}/', {
         DomainName: distribution.attrDomainName,
       }),
     });

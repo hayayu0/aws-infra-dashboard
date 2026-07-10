@@ -622,8 +622,8 @@ const createDataset = () => {
 	// サーバ情報の列の範囲を'-'で初期化
 	const displayedResources = new Set();
 	const resourceDisplayKey = (svc, regionName, resourceKey) => svc + '\t' + regionName + '\t' + resourceKey;
-	const historyLinkHtml = (svc, tagName, regionName, accountId) => '<span class="b disp-keyname">' + util.escapeHTML(tagName) + '</span><a href="./' + mystat.fromPattern[1] + '?account=' + accountId + '&svc=' + svc + '&region=' + encodeURIComponent(regionName) + '&name=' + encodeURIComponent(tagName) + '&cpuutil=' + ($('#chk_cpu_util').prop('checked') ? '1' : '0') + '" target="_blank"><img src="../common_script/images/historylink.png" style="padding-left:4px" alt="履歴"></a>';
-	const bar24hHtml = (tagName, resourceKey, regionName, accountId, startstopKey = resourceKey) => '<div class="bar24h_wrap" data-account="' + util.escapeHTML(accountId) + '" data-instanceid="' + resourceKey + '" data-startstopkey="' + util.escapeHTML(startstopKey) + '" data-tagname="' + util.escapeHTML(tagName) + '" data-region="' + regionName + '"><img class="spanLink cpu_graph_btns" src="../common_script/images/graphicon.png" width="11" height="11"><svg id="' + mystat.svgIdPre + resourceKey + '" viewBox="0 0 ' + mystat.bar24hWH.width + ' ' + mystat.bar24hWH.height + '"></svg></div><div class="cpu_graph_wrap"></div>';
+	const historyLinkHtml = (svc, tagName, regionName, accountId) => '<span class="b disp-keyname">' + util.escapeHTML(tagName) + '</span><a href="./' + mystat.fromPattern[1] + '?account=' + accountId + '&svc=' + svc + '&region=' + encodeURIComponent(regionName) + '&name=' + encodeURIComponent(tagName) + '&cpuutil=' + ($('#chk_cpu_util').prop('checked') ? '1' : '0') + '" target="_blank"><img src="common/images/historylink.png" style="padding-left:4px" alt="履歴"></a>';
+	const bar24hHtml = (tagName, resourceKey, regionName, accountId, startstopKey = resourceKey) => '<div class="bar24h_wrap" data-account="' + util.escapeHTML(accountId) + '" data-instanceid="' + resourceKey + '" data-startstopkey="' + util.escapeHTML(startstopKey) + '" data-tagname="' + util.escapeHTML(tagName) + '" data-region="' + regionName + '"><img class="spanLink cpu_graph_btns" src="common/images/graphicon.png" width="11" height="11"><svg id="' + mystat.svgIdPre + resourceKey + '" viewBox="0 0 ' + mystat.bar24hWH.width + ' ' + mystat.bar24hWH.height + '"></svg></div><div class="cpu_graph_wrap"></div>';
 	const setResourceRow = (row, svc, tagName, resourceKey, categoryValue, groupTagValue, instanceType, regionName, accountId, vpcName, az, startstopKey = resourceKey) => {
 		row[tableCol.tagname.no] = historyLinkHtml(svc, tagName, regionName, accountId);
 		row[tableCol.category.no] = categoryValue || '-';
@@ -1576,7 +1576,7 @@ const createTimeScaleHtml = () => {
 
 	// 事前にSVG→PNG変換済みのpng画像"timescale1m.png", "timescale2m.png"を読み込む → 読み込まれないことが多いので却下
 	//if(mystat.bar24hWH.width === 720 || mystat.bar24hWH.width === 1440){
-	//	timeScaleHtml = '<image x="0" y="0" width="' +mystat.bar24hWH.width + '" height="' + mystat.bar24hWH.height + '" xlink:href="../common_script/images/timescale' + (1440 / mystat.bar24hWH.width) + 'm.png" />';
+	//	timeScaleHtml = '<image x="0" y="0" width="' +mystat.bar24hWH.width + '" height="' + mystat.bar24hWH.height + '" xlink:href="common/images/timescale' + (1440 / mystat.bar24hWH.width) + 'm.png" />';
 	//}
 
 	return timeScaleHtml;
@@ -1900,7 +1900,7 @@ const drawHistoryMain = () => {
 		dataInitial[tableCol.ago.no] = (n + gapdate) + ' 日前';
 		dataInitial[tableCol.beginend.no] = '-';
 		dataInitial[tableCol.maxcpu.no] = '-';
-		dataInitial[tableCol.bar24h.no] = '<div class="bar24h_wrap" data-date="' + strymd + '"><img class="spanLink cpu_graph_btns" src="../common_script/images/graphicon.png" width="11" height="11"><svg id="' + mystat.svgIdPre + strymd + '" width="' + mystat.bar24hWH.width + '" height="' + mystat.bar24hWH.height + '"></svg></div><div class="cpu_graph_wrap"></div>';
+		dataInitial[tableCol.bar24h.no] = '<div class="bar24h_wrap" data-date="' + strymd + '"><img class="spanLink cpu_graph_btns" src="common/images/graphicon.png" width="11" height="11"><svg id="' + mystat.svgIdPre + strymd + '" width="' + mystat.bar24hWH.width + '" height="' + mystat.bar24hWH.height + '"></svg></div><div class="cpu_graph_wrap"></div>';
 
 		dataset.push(dataInitial.concat());   // 参照ではなく値を渡してpushするためconcat()を付与
 	}
