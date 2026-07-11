@@ -1,13 +1,8 @@
 ﻿'use strict';
 
-// デプロイ/環境固有の必須設定 (window.appConfig)
-// 新しい環境へ展開する際は、このファイル内の値を編集する
 window.appConfig = {
     defaultRegionId: 0,
     timezoneOffset: 9,
-    demo: {
-        now: null
-    },
     tagnameFilter: ".*",
     urlToolRoot: window.location.origin + "/",
     tablePageLengthOptions: [10, 20, 50, 100],

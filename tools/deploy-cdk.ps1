@@ -16,8 +16,7 @@
     [string]$AllowedIpV6Cidr = "",
     [ValidateSet("true", "false")]
     [string]$EnableIpAllowList = "false",
-    [string]$Profile = "",
-    [switch]$SkipInvalidation
+    [string]$Profile = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -380,7 +379,7 @@ Invoke-Cdk $deployArgs
 $stagedWebRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("$ToolNamePrefix-web-" + [guid]::NewGuid().ToString("N"))
 Copy-Item -LiteralPath ".\src\web" -Destination $stagedWebRoot -Recurse
 Update-WebConfig `
-    -ConfigPath (Join-Path $stagedWebRoot "style\config.js") `
+    -ConfigPath (Join-Path $stagedWebRoot "script\config.js") `
     -ToolRootUrl $toolRootUrl `
     -SubDir $SubDir `
     -AdditionalService $AdditionalService `
@@ -397,17 +396,15 @@ if ($LASTEXITCODE -ne 0) {
     throw "aws s3 sync failed with exit code $LASTEXITCODE."
 }
 
-if (!$SkipInvalidation) {
-    if (!$distributionId -or $distributionId -eq "None") {
-        throw "CloudFrontDistributionId output was not found."
-    }
+if (!$distributionId -or $distributionId -eq "None") {
+    throw "CloudFrontDistributionId output was not found."
+}
 
-    aws @awsProfileArgs cloudfront create-invalidation `
-        --distribution-id $distributionId `
-        --paths "/*" | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "aws cloudfront create-invalidation failed with exit code $LASTEXITCODE."
-    }
+aws @awsProfileArgs cloudfront create-invalidation `
+    --distribution-id $distributionId `
+    --paths "/*" | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "aws cloudfront create-invalidation failed with exit code $LASTEXITCODE."
 }
 
 Write-Host "Deploy complete."

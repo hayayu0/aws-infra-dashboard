@@ -338,14 +338,14 @@ export class LocalStack extends cdk.Stack {
   }
 
   private generatedConfigJs(subDir: string, accountDisplayName: string, additionalService: string[], regions: string[]): string {
-    const configPath = path.join(process.cwd(), 'src', 'web', 'style', 'config.js');
+    const configPath = path.join(process.cwd(), 'src', 'web', 'script', 'config.js');
     const source = fs.readFileSync(configPath, 'utf8');
     const regionsSource = regions.map((region) => JSON.stringify(region)).join(', ');
     const additionalServiceSource = additionalService.length > 0 ? `[ ${additionalService.map((service) => JSON.stringify(service)).join(', ')} ]` : '[]';
 
     const replaceOrThrow = (text: string, pattern: RegExp, replacement: (prefix: string) => string, label: string): string => {
       if (!pattern.test(text)) {
-        throw new Error(`src/web/style/config.js pattern not found: ${label}`);
+        throw new Error(`src/web/script/config.js pattern not found: ${label}`);
       }
       return text.replace(pattern, (_match, prefix) => replacement(prefix));
     };
@@ -428,7 +428,7 @@ def lambda_handler(event, context):
                 if info.is_dir():
                     continue
                 rel_path = info.filename.replace('\\\\', '/')
-                if rel_path == 'style/config.js':
+                if rel_path == 'script/config.js':
                     continue
                 s3.put_object(
                     Bucket=props['DestinationBucket'],
@@ -440,7 +440,7 @@ def lambda_handler(event, context):
 
         s3.put_object(
             Bucket=props['DestinationBucket'],
-            Key='web/style/config.js',
+            Key='web/script/config.js',
             Body=props['ConfigBody'].encode('utf-8'),
             ContentType='application/javascript; charset=utf-8',
         )

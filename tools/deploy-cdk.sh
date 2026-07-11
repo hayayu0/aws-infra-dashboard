@@ -17,7 +17,6 @@ ALLOWED_IP_V4_CIDR=""
 ALLOWED_IP_V6_CIDR=""
 ENABLE_IP_ALLOW_LIST="false"
 PROFILE=""
-SKIP_INVALIDATION="0"
 
 usage() {
     cat <<'USAGE'
@@ -39,7 +38,6 @@ Options:
   --allowed-ipv6-cidr CIDRS     Default: empty
   --enable-ip-allow-list BOOL   Default: false
   --profile PROFILE             Default: AWS CLI default profile
-  --skip-invalidation
   -h, --help
 USAGE
 }
@@ -61,7 +59,6 @@ while [ "$#" -gt 0 ]; do
         --allowed-ipv6-cidr) ALLOWED_IP_V6_CIDR="$2"; shift 2 ;;
         --enable-ip-allow-list) ENABLE_IP_ALLOW_LIST="$2"; shift 2 ;;
         --profile) PROFILE="$2"; shift 2 ;;
-        --skip-invalidation) SKIP_INVALIDATION="1"; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
     esac
@@ -347,20 +344,18 @@ trap 'rm -rf "$staged_web_root"' EXIT
 cp -R "$WEB_ROOT"/. "$staged_web_root"/
 
 timezone_offset="$(get_timezone_offset_hours "$TIME_ZONE")"
-update_web_config "$staged_web_root/style/config.js" "$tool_root_url" "$timezone_offset"
+update_web_config "$staged_web_root/script/config.js" "$tool_root_url" "$timezone_offset"
 
 aws "${AWS_PROFILE_ARGS[@]}" s3 sync "$staged_web_root" "s3://$bucket/web/" --delete
 
-if [ "$SKIP_INVALIDATION" != "1" ]; then
-    if [ -z "$distribution_id" ] || [ "$distribution_id" = "None" ]; then
-        echo "CloudFrontDistributionId output was not found." >&2
-        exit 1
-    fi
-
-    aws "${AWS_PROFILE_ARGS[@]}" cloudfront create-invalidation \
-        --distribution-id "$distribution_id" \
-        --paths "/*" >/dev/null
+if [ -z "$distribution_id" ] || [ "$distribution_id" = "None" ]; then
+    echo "CloudFrontDistributionId output was not found." >&2
+    exit 1
 fi
+
+aws "${AWS_PROFILE_ARGS[@]}" cloudfront create-invalidation \
+    --distribution-id "$distribution_id" \
+    --paths "/*" >/dev/null
 
 echo "Deploy complete."
 echo "GlobalStack: $GLOBAL_STACK_NAME (us-east-1)"

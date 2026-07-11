@@ -202,7 +202,7 @@ export class GlobalStack extends cdk.Stack {
         cachedMethods: ['GET', 'HEAD'],
         compress: true,
         cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
-        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
+        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN.originRequestPolicyId,
         responseHeadersPolicyId: cdk.aws_cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT.responseHeadersPolicyId,
       },
       {
@@ -213,7 +213,7 @@ export class GlobalStack extends cdk.Stack {
         cachedMethods: ['GET', 'HEAD'],
         compress: true,
         cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
-        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
+        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN.originRequestPolicyId,
         responseHeadersPolicyId: cdk.aws_cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT.responseHeadersPolicyId,
       },
       {
@@ -224,7 +224,7 @@ export class GlobalStack extends cdk.Stack {
         cachedMethods: ['GET', 'HEAD'],
         compress: true,
         cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
-        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
+        originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN.originRequestPolicyId,
         responseHeadersPolicyId: cdk.aws_cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT.responseHeadersPolicyId,
       },
     ];
@@ -251,7 +251,7 @@ export class GlobalStack extends cdk.Stack {
           cachedMethods: ['GET', 'HEAD'],
           compress: true,
           cachePolicyId: cdk.aws_cloudfront.CachePolicy.CACHING_DISABLED.cachePolicyId,
-          originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER.originRequestPolicyId,
+          originRequestPolicyId: cdk.aws_cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN.originRequestPolicyId,
           responseHeadersPolicyId: cdk.aws_cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT.responseHeadersPolicyId,
         },
         cacheBehaviors,
