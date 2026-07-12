@@ -237,7 +237,11 @@ const startstopDataForResource = (startstopDataList, tagNameKey, resourceKey, ta
 	}, -1);
 	const selectRepresentativeResource = (resourceEntries) => {
 		if(resourceEntries.length < 2) return null;
-		const sortedEntries = resourceEntries.slice().sort((a, b) => {
+		const nonTerminatedEntries = resourceEntries.filter(([, resourceData]) =>
+			objectEntries(resourceData).some(([time, state]) => time !== 'latest' && String(state) !== '4')
+		);
+		const candidateEntries = nonTerminatedEntries.length > 0 ? nonTerminatedEntries : resourceEntries;
+		const sortedEntries = candidateEntries.slice().sort((a, b) => {
 			const latestDiff = latestStartstopMinutes(b[1]) - latestStartstopMinutes(a[1]);
 			if(latestDiff !== 0) return latestDiff;
 			return String(a[0]) < String(b[0]) ? -1 : (String(a[0]) > String(b[0]) ? 1 : 0);
@@ -246,7 +250,7 @@ const startstopDataForResource = (startstopDataList, tagNameKey, resourceKey, ta
 		const copied = {...resourceData};
 		Object.defineProperty(copied, '__resourceKey', { value: resolvedResourceKey, enumerable:false });
 		Object.defineProperty(copied, '__resourceKeys', { value: [resolvedResourceKey], enumerable:false });
-		Object.defineProperty(copied, '__representativeFromMultiple', { value: true, enumerable:false });
+		if(candidateEntries.length > 1) Object.defineProperty(copied, '__representativeFromMultiple', { value: true, enumerable:false });
 		if(resourceData.__localTimeKeys) markLocalStartstopData(copied);
 		return copied;
 	};
@@ -1639,10 +1643,11 @@ const loadCpuUtilJsonCurrentPage = async (strymd) => {
 
 				if(mystat.orgRowId[resourceKey] === undefined) return;  // continue
 
-				const cpuData = cpuDataForResource(cpuDataGroup, resourceKey);
+				const onoffData = startstopDataForResource(startstopData, tagNameKey, startstopKeys[resourceKey] || resourceKey, targetRegion);
+				const cpuData = cpuDataForResourceKeys(cpuDataGroup, onoffData?.__resourceKeys || [resourceKey], targetRegion);
 				if(cpuData === null) return;  // continue
 
-				updateBar24hAndTimeCell(resourceKey, strymd, startstopDataForResource(startstopData, tagNameKey, startstopKeys[resourceKey] || resourceKey, targetRegion), cpuData);
+				updateBar24hAndTimeCell(resourceKey, strymd, onoffData, cpuData);
 			});
 		})
 		.finally(() => {
