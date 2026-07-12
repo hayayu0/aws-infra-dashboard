@@ -87,26 +87,28 @@ const ec2rdsSelectedRegion = () => regions[regionId] || regions[0] || {};
 const ec2rdsTargetRegions = () => ec2rdsSelectedRegion().id ? [ec2rdsSelectedRegion()] : [];
 const ec2rdsRegionIds = () => ec2rdsTargetRegions().map(region => region.id).filter(v => v);
 const ec2rdsRegionLocations = () => ec2rdsTargetRegions().map(region => region.location || region.id).filter(v => v).join(', ');
-const currentRegionName = () => ec2rdsSelectedRegion().id || acc[accNo]?.regions?.[0] || regions[0]?.id || '';
+const currentRegionName = () => ec2rdsSelectedRegion().id || currentAccount.regions?.[0] || regions[0]?.id || '';
 const validRegionName = (regionName) => regions.some(region => region.id === regionName) ? regionName : '';
 const renderDemoMessage = () => {
 	const message = window.appConfig.demo?.message;
 	if(!message) return;
 	document.querySelector('#MainBlock')?.insertAdjacentHTML('afterbegin', '<div class="DemoMessage">' + util.escapeHTML(message) + '</div>');
 };
-const selectedEc2rdsAccountIds = () => (window.getSelectedAccountIds ? window.getSelectedAccountIds() : [accNo]).filter(accountId => acc[accountId]);
-const accountName = (accountId) => acc[accountId]?.accountName || accountId;
-const accountUrlRoot = (accountId) => acc[accountId]?.urlRoot || urlToolRoot;
-const accountSubDir = (accountId) => String(acc[accountId]?.subDir || '').replace(/^\/+|\/+$/g, '');
-const accountS3Dir = (accountId, dirName) => accountSubDir(accountId) ? dirName + '/' + accountSubDir(accountId) : dirName;
-const accountLoadsSvc = (accountId, svc) => svc === 'ec2' || (acc[accountId]?.additionalService || []).includes(svc.toUpperCase());
-const accountRegionTargets = (svc = '') => selectedEc2rdsAccountIds()
-	.filter(accountId => !svc || accountLoadsSvc(accountId, svc))
-	.filter(accountId => (acc[accountId].regions || []).includes(currentRegionName()))
-	.map(accountId => ({ accountId, account:acc[accountId], urlRoot:accountUrlRoot(accountId), region:ec2rdsSelectedRegion() }));
+const selectedEc2rdsAccounts = () => (window.getSelectedAccounts ? window.getSelectedAccounts() : [{ index:currentAccountIndex, account:currentAccount }]).filter(target => target.account);
+const accountName = (account, fallback = '') => account?.accountName || fallback;
+const accountUrlRoot = (account) => account?.urlRoot || urlToolRoot;
+const accountSubDir = (account) => String(account?.subDir || '').replace(/^\/+|\/+$/g, '');
+const accountS3Dir = (account, dirName) => accountSubDir(account) ? dirName + '/' + accountSubDir(account) : dirName;
+const accountApiPath = (account) => accountSubDir(account) ? 'api/' + accountSubDir(account) + '/' : 'api/';
+const accountApiUrl = (account = currentAccount, rootUrl = accountUrlRoot(account)) => rootUrl + accountApiPath(account);
+const accountLoadsSvc = (account, svc) => svc === 'ec2' || (account?.additionalService || []).includes(svc.toUpperCase());
+const accountRegionTargets = (svc = '') => selectedEc2rdsAccounts()
+	.filter(target => !svc || accountLoadsSvc(target.account, svc))
+	.filter(target => (target.account.regions || []).includes(currentRegionName()))
+	.map(target => ({ ...target, urlRoot:accountUrlRoot(target.account), region:ec2rdsSelectedRegion() }));
 const regionFromAz = (az) => (az || '').match(/^([a-z]{2}(?:-[a-z]+)+-\d)[a-z]$/i)?.[1] || '';
-const startstopStateUrl = (ymd, svc, cacheSuffix = '', targetRegion = currentRegionName(), accountId = accNo, rootUrl = accountUrlRoot(accountId)) => {
-	return rootUrl + accountS3Dir(accountId, 'lambda') + '/record-start-stop-time/' + targetRegion + '/' + ymd.slice(0,4) + '/' + ymd.slice(4,6) + '/' + ymd + '_' + svc + '_start_stop_time.json' + cacheSuffix;
+const startstopStateUrl = (ymd, svc, cacheSuffix = '', targetRegion = currentRegionName(), account = currentAccount, rootUrl = accountUrlRoot(account)) => {
+	return rootUrl + accountS3Dir(account, 'lambda') + '/record-start-stop-time/' + targetRegion + '/' + ymd.slice(0,4) + '/' + ymd.slice(4,6) + '/' + ymd + '_' + svc + '_start_stop_time.json' + cacheSuffix;
 };
 const escapeNameForS3Key = (value) => {
 	const safe = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
@@ -118,8 +120,8 @@ const escapeNameForS3Key = (value) => {
 	});
 	return escaped;
 };
-const cpuUtilUrl = (ymd, tagname, targetRegion = currentRegionName(), accountId = accNo, rootUrl = accountUrlRoot(accountId)) => {
-	return rootUrl + accountS3Dir(accountId, 'lambda') + '/cpu-utilization/' + targetRegion + '/' + ymd.slice(0,4) + '/' + ymd.slice(4,6) + '/' + ymd.slice(6,8) + '/' + ymd + '_' + escapeNameForS3Key(tagname) + '.json?' + util.cacheParam(600, 't');
+const cpuUtilUrl = (ymd, tagname, targetRegion = currentRegionName(), account = currentAccount, rootUrl = accountUrlRoot(account)) => {
+	return rootUrl + accountS3Dir(account, 'lambda') + '/cpu-utilization/' + targetRegion + '/' + ymd.slice(0,4) + '/' + ymd.slice(4,6) + '/' + ymd.slice(6,8) + '/' + ymd + '_' + escapeNameForS3Key(tagname) + '.json?' + util.cacheParam(600, 't');
 };
 const excelColumnName = (columnIndex) => {
 	let index = columnIndex + 1;
@@ -190,8 +192,8 @@ const markLocalStartstopData = (data) => {
 	Object.defineProperty(data, '__localTimeKeys', { value:true, enumerable:false });
 	return data;
 };
-const markStartstopAccount = (data, accountId) => {
-	if(accountId) Object.defineProperty(data, '__accountId', { value:accountId, enumerable:false });
+const markStartstopAccountIndex = (data, accountIndex) => {
+	if(accountIndex) Object.defineProperty(data, '__accountIndex', { value:accountIndex, enumerable:false });
 	return data;
 };
 const iterateStartstopRegions = (startstopDataList, targetRegion = '', callback, fallbackRegionName = currentRegionName()) => {
@@ -276,7 +278,7 @@ const startstopResourceRefs = (startstopDataList) => {
 	const refs = [];
 	iterateStartstopRegions(startstopDataList, '', (regionName, startstopData) => {
 		objectEntries(startstopData).forEach(([tagName, resourceMap]) => {
-			objectEntries(resourceMap).forEach(([resourceKey, resourceData]) => refs.push({ accountId:resourceData.__accountId, regionName, tagName, resourceKey }));
+			objectEntries(resourceMap).forEach(([resourceKey, resourceData]) => refs.push({ accountIndex:resourceData.__accountIndex, regionName, tagName, resourceKey }));
 		});
 	});
 	return refs;
@@ -344,14 +346,14 @@ const cloudWatchDateRange = (year, monthIndex, date) => {
 	};
 };
 const cloudWatchParam = (value) => encodeURIComponent(value);
-const buildCloudWatchCpuUrl = (resourceId, tagname, graphYMD, period, graphWidth, graphHeight, rootUrl = accountUrlRoot(accNo)) => {
+const buildCloudWatchCpuUrl = (resourceId, tagname, graphYMD, period, graphWidth, graphHeight, account = currentAccount, rootUrl = accountUrlRoot(account)) => {
 	const isEc2 = resourceId.indexOf('i-') === 0;
 	const namespace = isEc2 ? 'EC2' : 'RDS';
 	const dimensionName = isEc2 ? 'InstanceId' : 'DBInstanceIdentifier';
 	const metricIdSuffix = isEc2 ? '%2C%7B%5C%22id%5C%22%3A%5C%22m1%5C%22%7D' : '';
 	const widgetPrefix = '?api=cloudwatch:get_metric_widget_image&arg=%7b%22MetricWidget%22:%22%7B%5C%22metrics%5C%22%3A%5B%5B%5C%22AWS';
 	const widgetSuffix = '%5C%22%2C%5C%22width%5C%22%3A' + graphWidth + '%2C%5C%22height%5C%22%3A' + graphHeight + '%7D%22%7d';
-	return rootUrl + 'api/' + widgetPrefix +
+	return accountApiUrl(account, rootUrl) + widgetPrefix +
 		'%2F' + namespace + '%5C%22%2C%5C%22CPUUtilization%5C%22%2C%5C%22' + dimensionName + '%5C%22%2C%5C%22' +
 		resourceId + '%5C%22' + metricIdSuffix + '%5D%5D%2C%5C%22view%5C%22%3A%5C%22timeSeries%5C%22%2C%5C%22stacked%5C%22%3Afalse%2C%5C%22stat%5C%22%3A%5C%22Average%5C%22%2C%5C%22period%5C%22%3A' + period + '%2C%5C' +
 		'%22title%5C%22%3A%5C%22' + graphYMD.titleDate + '%20' + tagname + '%20CPU%20%25%5C%22%2C%5C%22yAxis%5C%22%3A%7B%5C%22left%5C%22%3A%7B%5C%22min%5C%22%3A0%2C%5C%22label%5C%22%3A%5C%22%5C%22%2C%5C%22showUnits%5C%22%3Afalse%2C%5C' +
@@ -367,14 +369,14 @@ const tagListToObject = (tagList) => {
 	return (tagList && typeof tagList === 'object') ? tagList : {};
 };
 const objectEntries = (value) => (value && typeof value === 'object' && !Array.isArray(value)) ? Object.entries(value) : [];
-const apiFetchByTarget = (query, cacheSec, target) => util.cacheFetch(target.urlRoot + 'api/?' + query + '&' + util.cacheParam(cacheSec) + '&region=' + encodeURIComponent(target.region.id));
+const apiFetchByTarget = (query, cacheSec, target) => util.cacheFetch(accountApiUrl(target.account, target.urlRoot) + '?' + query + '&' + util.cacheParam(cacheSec) + '&region=' + encodeURIComponent(target.region.id));
 const loadAccountRegionFlatMap = (fetcher, mapper, svc = '') => Promise.all(accountRegionTargets(svc).map(fetcher)).then(results => results.flatMap(mapper));
-const mergeStartstopRegionData = (result, regionId, data, accountId = '') => {
+const mergeStartstopRegionData = (result, regionId, data, accountIndex = '') => {
 	result[regionId] = result[regionId] || {};
 	objectEntries(data).forEach(([tagName, resourceMap]) => {
 		result[regionId][tagName] = result[regionId][tagName] || {};
 		objectEntries(resourceMap).forEach(([resourceId, resourceData]) => {
-			result[regionId][tagName][resourceId] = markStartstopAccount(resourceData, accountId);
+			result[regionId][tagName][resourceId] = markStartstopAccountIndex(resourceData, accountIndex);
 		});
 	});
 };
@@ -399,10 +401,10 @@ const storedDescribeYmdBeforeLocalYmd = (localYmd) => {
 	dt.setUTCDate(dt.getUTCDate() - 1);
 	return storedDescribeYmdForLocalYmd(dateToUtcYmd(dt));
 };
-const storedDescribeUrlByStoredYmd = (storedYmd, svc, targetRegion, accountId = accNo, rootUrl = accountUrlRoot(accountId)) => {
-	return rootUrl + accountS3Dir(accountId, 'stored') + '/' + targetRegion + '/' + storedYmd.slice(0, 4) + '/' + storedYmd.slice(4, 6) + '/' + svc + '-describe_' + (svc === 'ec2' ? 'instances' : 'db_instances') + '_' + storedYmd + '.json';
+const storedDescribeUrlByStoredYmd = (storedYmd, svc, targetRegion, account = currentAccount, rootUrl = accountUrlRoot(account)) => {
+	return rootUrl + accountS3Dir(account, 'stored') + '/' + targetRegion + '/' + storedYmd.slice(0, 4) + '/' + storedYmd.slice(4, 6) + '/' + svc + '-describe_' + (svc === 'ec2' ? 'instances' : 'db_instances') + '_' + storedYmd + '.json';
 };
-const storedDescribeUrl = (localYmd, svc, targetRegion, accountId = accNo, rootUrl = accountUrlRoot(accountId)) => storedDescribeUrlByStoredYmd(storedDescribeYmdForLocalYmd(localYmd), svc, targetRegion, accountId, rootUrl);
+const storedDescribeUrl = (localYmd, svc, targetRegion, account = currentAccount, rootUrl = accountUrlRoot(account)) => storedDescribeUrlByStoredYmd(storedDescribeYmdForLocalYmd(localYmd), svc, targetRegion, account, rootUrl);
 const useStoredDescribeForTargetDate = () => strymd && !isToday(strymd);
 const useTodayDescribeMerge = () => strymd && isToday(strymd);
 const normalizeStoredEc2DescribeInstances = (data) => (data.Reservations || [])
@@ -412,15 +414,15 @@ const normalizeStoredEc2DescribeInstances = (data) => (data.Reservations || [])
 		Tags: tagListToObject(inst.Tags),
 		AZ: inst.AZ || inst.Placement?.AvailabilityZone
 	}));
-const fetchStoredDescribe = (localYmd, svc, targetRegion, accountId = accNo, rootUrl = accountUrlRoot(accountId)) => util.cacheFetch(storedDescribeUrl(localYmd, svc, targetRegion, accountId, rootUrl))
+const fetchStoredDescribe = (localYmd, svc, targetRegion, account = currentAccount, rootUrl = accountUrlRoot(account)) => util.cacheFetch(storedDescribeUrl(localYmd, svc, targetRegion, account, rootUrl))
 	.catch(() => (svc === 'ec2' ? { Reservations: [] } : { DBInstances: [] }));
-const fetchStoredDescribeByStoredYmd = (storedYmd, svc, targetRegion, accountId = accNo, rootUrl = accountUrlRoot(accountId)) => util.cacheFetch(storedDescribeUrlByStoredYmd(storedYmd, svc, targetRegion, accountId, rootUrl))
+const fetchStoredDescribeByStoredYmd = (storedYmd, svc, targetRegion, account = currentAccount, rootUrl = accountUrlRoot(account)) => util.cacheFetch(storedDescribeUrlByStoredYmd(storedYmd, svc, targetRegion, account, rootUrl))
 	.catch(() => (svc === 'ec2' ? { Reservations: [] } : { DBInstances: [] }));
-const fetchStoredDescribeList = (localYmd, svc, targetRegion, accountId = accNo, rootUrl = accountUrlRoot(accountId)) => Promise.all(
-	storedDescribeYmdsForLocalYmd(localYmd).map(storedYmd => fetchStoredDescribeByStoredYmd(storedYmd, svc, targetRegion, accountId, rootUrl))
+const fetchStoredDescribeList = (localYmd, svc, targetRegion, account = currentAccount, rootUrl = accountUrlRoot(account)) => Promise.all(
+	storedDescribeYmdsForLocalYmd(localYmd).map(storedYmd => fetchStoredDescribeByStoredYmd(storedYmd, svc, targetRegion, account, rootUrl))
 );
-const fetchTodayDescribeList = (localYmd, svc, liveLoader, targetRegion, accountId = accNo, rootUrl = accountUrlRoot(accountId)) => Promise.all([
-	fetchStoredDescribeByStoredYmd(storedDescribeYmdBeforeLocalYmd(localYmd), svc, targetRegion, accountId, rootUrl),
+const fetchTodayDescribeList = (localYmd, svc, liveLoader, targetRegion, account = currentAccount, rootUrl = accountUrlRoot(account)) => Promise.all([
+	fetchStoredDescribeByStoredYmd(storedDescribeYmdBeforeLocalYmd(localYmd), svc, targetRegion, account, rootUrl),
 	liveLoader()
 ]);
 const ec2DescribeInstances = (data) => data.Reservations ? normalizeStoredEc2DescribeInstances(data) : (data.Instances || []);
@@ -435,28 +437,28 @@ const mergeRdsDescribeInstances = (dataList) => Array.from(dataList.reduce((map,
 const loadEc2InstancesForConfiguredRegions = () => loadAccountRegionFlatMap(
 	target => {
 		const liveLoader = () => apiFetchByTarget('api=ec2:describe_instances&simpletag&flatten&select=InstanceId:Tags:Placement:InstanceType:VpcId', 60, target);
-		return (useStoredDescribeForTargetDate() ? fetchStoredDescribeList(strymd, 'ec2', target.region.id, target.accountId, target.urlRoot) : (useTodayDescribeMerge() ? fetchTodayDescribeList(strymd, 'ec2', liveLoader, target.region.id, target.accountId, target.urlRoot) : liveLoader())).then(data => ({ accountId:target.accountId, regionId:target.region.id, data }));
+		return (useStoredDescribeForTargetDate() ? fetchStoredDescribeList(strymd, 'ec2', target.region.id, target.account, target.urlRoot) : (useTodayDescribeMerge() ? fetchTodayDescribeList(strymd, 'ec2', liveLoader, target.region.id, target.account, target.urlRoot) : liveLoader())).then(data => ({ accountIndex:target.index, regionId:target.region.id, data }));
 	},
-	result => (Array.isArray(result.data) ? mergeEc2DescribeInstances(result.data) : (result.data.Instances || [])).map(inst => ({ ...inst, __accountId:result.accountId, __region:result.regionId }))
+	result => (Array.isArray(result.data) ? mergeEc2DescribeInstances(result.data) : (result.data.Instances || [])).map(inst => ({ ...inst, __accountIndex:result.accountIndex, __region:result.regionId }))
 );
 const loadRdsInstancesForConfiguredRegions = () => loadAccountRegionFlatMap(
 	target => {
 		const liveLoader = () => apiFetchByTarget('api=rds:describe_db_instances&simpletag&select=DBInstanceIdentifier:TagList:AvailabilityZone:DBInstanceClass:DBSubnetGroup', 60, target);
-		return (useStoredDescribeForTargetDate() ? fetchStoredDescribeList(strymd, 'rds', target.region.id, target.accountId, target.urlRoot) : (useTodayDescribeMerge() ? fetchTodayDescribeList(strymd, 'rds', liveLoader, target.region.id, target.accountId, target.urlRoot) : liveLoader())).then(data => ({ accountId:target.accountId, regionId:target.region.id, data }));
+		return (useStoredDescribeForTargetDate() ? fetchStoredDescribeList(strymd, 'rds', target.region.id, target.account, target.urlRoot) : (useTodayDescribeMerge() ? fetchTodayDescribeList(strymd, 'rds', liveLoader, target.region.id, target.account, target.urlRoot) : liveLoader())).then(data => ({ accountIndex:target.index, regionId:target.region.id, data }));
 	},
-	result => (Array.isArray(result.data) ? mergeRdsDescribeInstances(result.data) : (result.data.DBInstances || [])).map(inst => ({ ...inst, __accountId:result.accountId, __region:result.regionId })),
+	result => (Array.isArray(result.data) ? mergeRdsDescribeInstances(result.data) : (result.data.DBInstances || [])).map(inst => ({ ...inst, __accountIndex:result.accountIndex, __region:result.regionId })),
 	'rds'
 ).then(DBInstances => ({ DBInstances }));
 const loadVpcDataForConfiguredRegions = () => loadAccountRegionFlatMap(
 	target => apiFetchByTarget('api=ec2:describe_vpcs&select=Tags:VpcId', 3600, target),
 	data => data.Vpcs || []
 ).then(Vpcs => ({ Vpcs }));
-const loadStartstopForConfiguredRegions = (ymd, svc, cacheSuffix = '') => Promise.all(accountRegionTargets(svc).map(target => util.fetch(startstopStateUrl(ymd, svc, cacheSuffix, target.region.id, target.accountId, target.urlRoot)).then(data => {
-	if(countRawStartstopResources(data) === 0) mystat.startstopEmptyFetches.push({ svc, accountId:target.accountId, regionName:target.region.id, ymd });
-	return [target.region.id, data, target.accountId];
+const loadStartstopForConfiguredRegions = (ymd, svc, cacheSuffix = '') => Promise.all(accountRegionTargets(svc).map(target => util.fetch(startstopStateUrl(ymd, svc, cacheSuffix, target.region.id, target.account, target.urlRoot)).then(data => {
+	if(countRawStartstopResources(data) === 0) mystat.startstopEmptyFetches.push({ svc, accountIndex:target.index, regionName:target.region.id, ymd });
+	return [target.region.id, data, target.index];
 }))).then(entries => {
 	const result = {};
-	entries.forEach(([regionId, data, accountId]) => mergeStartstopRegionData(result, regionId, data, accountId));
+	entries.forEach(([regionId, data, accountIndex]) => mergeStartstopRegionData(result, regionId, data, accountIndex));
 	return result;
 });
 const startstopUtcYmdsForLocalYmd = (ymd) => {
@@ -488,7 +490,7 @@ const mergeStartstopForLocalYmd = (localYmd, dateEntries) => {
 				objectEntries(resourceMap).forEach(([resourceId, rawData]) => {
 					const mapKey = region + '\t' + tagName + '\t' + resourceId;
 					if(!resources.has(mapKey)){
-						resources.set(mapKey, { region, tagName, resourceId, accountId:rawData.__accountId, events:[] });
+						resources.set(mapKey, { region, tagName, resourceId, accountIndex:rawData.__accountIndex, events:[] });
 					}
 					const events = resources.get(mapKey).events;
 					objectEntries(rawData).forEach(([time, state]) => {
@@ -507,7 +509,7 @@ const mergeStartstopForLocalYmd = (localYmd, dateEntries) => {
 		});
 	});
 
-	resources.forEach(({region, tagName, resourceId, accountId, events}) => {
+	resources.forEach(({region, tagName, resourceId, accountIndex, events}) => {
 		events.sort((a, b) => a.abs - b.abs);
 		const localEvents = [];
 		const stateAtStart = [...events].reverse().find(event => event.abs <= windowStart);
@@ -522,7 +524,7 @@ const mergeStartstopForLocalYmd = (localYmd, dateEntries) => {
 		result[region] = result[region] || {};
 		result[region][tagName] = result[region][tagName] || {};
 		const outData = markLocalStartstopData({});
-		markStartstopAccount(outData, accountId);
+		markStartstopAccountIndex(outData, accountIndex);
 		localEvents.forEach(event => {
 			const localMinutes = event.abs - windowStart;
 			if(localMinutes < 0 || localMinutes > 1440) return;
@@ -558,7 +560,7 @@ const mergeCpuUtilForLocalYmd = (localYmd, dateEntries) => {
 
 	return result;
 };
-const loadCpuUtilForLocalYmdRegion = (ymd, tagname, targetRegion, accountId = accNo) => loadLocalYmdEntries(ymd, utcYmd => util.fetch(cpuUtilUrl(utcYmd, tagname, targetRegion, accountId, accountUrlRoot(accountId))).then(data => ({ [targetRegion]: data })), mergeCpuUtilForLocalYmd);
+const loadCpuUtilForLocalYmdRegion = (ymd, tagname, targetRegion, account = currentAccount) => loadLocalYmdEntries(ymd, utcYmd => util.fetch(cpuUtilUrl(utcYmd, tagname, targetRegion, account, accountUrlRoot(account))).then(data => ({ [targetRegion]: data })), mergeCpuUtilForLocalYmd);
 const loadLatestEc2StatusForConfiguredRegions = () => loadAccountRegionFlatMap(
 	target => apiFetchByTarget('api=ec2:describe_instance_status&arg=%7b%22IncludeAllInstances%22:true%7d&select=InstanceId:InstanceState.Name:InstanceStatus.Status:SystemStatus.Status:AttachedEbsStatus.Status', 30, target),
 	data => data.InstanceStatuses || []
@@ -568,7 +570,7 @@ const loadLatestRdsStatusForConfiguredRegions = () => loadAccountRegionFlatMap(
 	data => data.DBInstances || [],
 	'rds'
 );
-const isSelectedSvc = (svc) => selectedSvcVal.indexOf(svc + 'Y') !== -1 && (svc !== 'rds' || selectedEc2rdsAccountIds().some(accountId => accountLoadsSvc(accountId, 'rds')));
+const isSelectedSvc = (svc) => selectedSvcVal.indexOf(svc + 'Y') !== -1 && (svc !== 'rds' || selectedEc2rdsAccounts().some(target => accountLoadsSvc(target.account, 'rds')));
 const loadSelectedStartstopForLocalYmd = (svc) => isSelectedSvc(svc) ? loadStartstopForLocalYmdConfiguredRegions(strymd, svc, '?' + util.cacheParam(120, 't')) : Promise.resolve({});
 
 // 指定のyyyymmddが今日かどうか
@@ -622,25 +624,26 @@ const createDataset = () => {
 	// サーバ情報の列の範囲を'-'で初期化
 	const displayedResources = new Set();
 	const resourceDisplayKey = (svc, regionName, resourceKey) => svc + '\t' + regionName + '\t' + resourceKey;
-	const historyLinkHtml = (svc, tagName, regionName, accountId) => '<span class="b disp-keyname">' + util.escapeHTML(tagName) + '</span><a href="./' + mystat.fromPattern[1] + '?account=' + accountId + '&svc=' + svc + '&region=' + encodeURIComponent(regionName) + '&name=' + encodeURIComponent(tagName) + '&cpuutil=' + ($('#chk_cpu_util').prop('checked') ? '1' : '0') + '" target="_blank"><img src="common/images/historylink.png" style="padding-left:4px" alt="履歴"></a>';
-	const bar24hHtml = (tagName, resourceKey, regionName, accountId, startstopKey = resourceKey) => '<div class="bar24h_wrap" data-account="' + util.escapeHTML(accountId) + '" data-instanceid="' + resourceKey + '" data-startstopkey="' + util.escapeHTML(startstopKey) + '" data-tagname="' + util.escapeHTML(tagName) + '" data-region="' + regionName + '"><img class="spanLink cpu_graph_btns" src="common/images/graphicon.png" width="11" height="11"><svg id="' + mystat.svgIdPre + resourceKey + '" viewBox="0 0 ' + mystat.bar24hWH.width + ' ' + mystat.bar24hWH.height + '"></svg></div><div class="cpu_graph_wrap"></div>';
-	const setResourceRow = (row, svc, tagName, resourceKey, categoryValue, groupTagValue, instanceType, regionName, accountId, vpcName, az, startstopKey = resourceKey) => {
-		row[tableCol.tagname.no] = historyLinkHtml(svc, tagName, regionName, accountId);
+	const historyLinkHtml = (svc, tagName, regionName, accountIndex) => '<span class="b disp-keyname">' + util.escapeHTML(tagName) + '</span><a href="./' + mystat.fromPattern[1] + '?account=' + accountIndex + '&svc=' + svc + '&region=' + encodeURIComponent(regionName) + '&name=' + encodeURIComponent(tagName) + '&cpuutil=' + ($('#chk_cpu_util').prop('checked') ? '1' : '0') + '" target="_blank"><img src="common/images/historylink.png" style="padding-left:4px" alt="履歴"></a>';
+	const bar24hHtml = (tagName, resourceKey, regionName, accountIndex, startstopKey = resourceKey) => '<div class="bar24h_wrap" data-account-index="' + util.escapeHTML(accountIndex) + '" data-instanceid="' + resourceKey + '" data-startstopkey="' + util.escapeHTML(startstopKey) + '" data-tagname="' + util.escapeHTML(tagName) + '" data-region="' + regionName + '"><img class="spanLink cpu_graph_btns" src="common/images/graphicon.png" width="11" height="11"><svg id="' + mystat.svgIdPre + resourceKey + '" viewBox="0 0 ' + mystat.bar24hWH.width + ' ' + mystat.bar24hWH.height + '"></svg></div><div class="cpu_graph_wrap"></div>';
+	const setResourceRow = (row, svc, tagName, resourceKey, categoryValue, groupTagValue, instanceType, regionName, accountIndex, vpcName, az, startstopKey = resourceKey) => {
+		const account = accounts[accountIndex] || currentAccount;
+		row[tableCol.tagname.no] = historyLinkHtml(svc, tagName, regionName, accountIndex);
 		row[tableCol.category.no] = categoryValue || '-';
 		row[tableCol.ac.no] = groupTagValue;
 		row[tableCol.instancetype.no] = instanceType;
-		row[tableCol.account.no] = accountName(accountId);
+		row[tableCol.account.no] = accountName(account, accountIndex);
 		row[tableCol.vpc.no] = vpcName;
 		row[tableCol.az.no] = az;
 		row[tableCol.maxcpu.no] = '-';
 		row[tableCol.beginend.no] = '<div class="bar24Cell loading-spin-mini"></div>';
-		row[tableCol.bar24h.no] = bar24hHtml(tagName, resourceKey, regionName, accountId, startstopKey);
+		row[tableCol.bar24h.no] = bar24hHtml(tagName, resourceKey, regionName, accountIndex, startstopKey);
 	};
 	const ec2ById = new Map(mystat.ec2LiteList.map(ec2 => [ec2.InstanceId, ec2]));
 	const rdsById = new Map(mystat.rdsList.map(rds => [rds.DBInstanceIdentifier, rds]));
 
 	const appendStartstopRows = (svc, startstopDataList) => {
-		startstopResourceRefs(startstopDataList).forEach(({ accountId:sourceAccountId, regionName, tagName, resourceKey }) => {
+		startstopResourceRefs(startstopDataList).forEach(({ accountIndex:sourceAccountIndex, regionName, tagName, resourceKey }) => {
 			const restoredResourceData = startstopDataForResource(startstopDataList, tagName, tagName, regionName);
 			const restoredResourceKeys = restoredResourceData?.__resourceKeys || [];
 			const isRestoredGroup = restoredResourceKeys.length > 1;
@@ -661,12 +664,12 @@ const createDataset = () => {
 
 			const row = Array(tableCol._meta.initcols).fill('-');
 			let groupTagValue = '-', categoryValue = '-', instanceType = '-', vpcName = '?', az = '-';
-			let accountId = sourceAccountId || accNo;
+			let accountIndex = sourceAccountIndex || currentAccountIndex;
 
 			if(svc === 'ec2'){
 				const ec2 = ec2ById.get(displayResourceKey);
 				const tags = ec2?.Tags || {};
-				accountId = ec2?.__accountId || accountId;
+				accountIndex = ec2?.__accountIndex || accountIndex;
 				groupTagValue = tags[groupTagFilter.key] || '-';
 				categoryValue = tags[categoryTagKey] || '-';
 				instanceType = ec2?.InstanceType || '-';
@@ -675,7 +678,7 @@ const createDataset = () => {
 			}else if(svc === 'rds'){
 				const rds = rdsById.get(displayResourceKey);
 				const tags = { [groupTagFilter.key]: '-', ...tagListToObject(rds?.TagList) };
-				accountId = rds?.__accountId || accountId;
+				accountIndex = rds?.__accountIndex || accountIndex;
 				groupTagValue = tags[groupTagFilter.key] || '-';
 				categoryValue = tags[categoryTagKey] || '-';
 				instanceType = rds?.DBInstanceClass || '-';
@@ -687,7 +690,7 @@ const createDataset = () => {
 				return true;   // continue
 			}
 
-			setResourceRow(row, svc, tagName, displayResourceKey, categoryValue, groupTagValue, instanceType, regionName, accountId, vpcName, az, startstopKey);
+			setResourceRow(row, svc, tagName, displayResourceKey, categoryValue, groupTagValue, instanceType, regionName, accountIndex, vpcName, az, startstopKey);
 
 			dataset.push(row);
 		});
@@ -1150,7 +1153,7 @@ const loadCompleteHistFunc = (opt, tagname) => {
 				if(mystat.historyInstanceSvc === "EC2") {
 					startstopPromises.push(loadHistoryStartstopForLocalYmd(t2_strymd, 'ec2'));
 				}
-				else if(mystat.historyInstanceSvc === "RDS" && accountLoadsSvc(accNo, 'rds')){
+				else if(mystat.historyInstanceSvc === "RDS" && accountLoadsSvc(currentAccount, 'rds')){
 					startstopPromises.push(loadHistoryStartstopForLocalYmd(t2_strymd, 'rds'));
 				}else{
 					return Promise.resolve(null);
@@ -1605,10 +1608,11 @@ const loadCpuUtilJsonCurrentPage = async (strymd) => {
 		const resourceKey = v.dataset.instanceid || '';
 		const startstopKey = v.dataset.startstopkey || resourceKey;
 		const targetRegion = v.dataset.region || currentRegionName();
-		const accountId = v.dataset.account || accNo;
+		const accountIndex = v.dataset.accountIndex || currentAccountIndex;
+		const account = accounts[accountIndex] || currentAccount;
 		if(!tagNameKey || !resourceKey) return;
-		const cpuFileKey = accountId + '\t' + targetRegion + '\t' + tagNameKey;
-		if(!resourceKeysByCpuFile[cpuFileKey]) resourceKeysByCpuFile[cpuFileKey] = { accountId, tagNameKey, targetRegion, resourceKeys: [], startstopKeys: {} };
+		const cpuFileKey = accountIndex + '\t' + targetRegion + '\t' + tagNameKey;
+		if(!resourceKeysByCpuFile[cpuFileKey]) resourceKeysByCpuFile[cpuFileKey] = { account, tagNameKey, targetRegion, resourceKeys: [], startstopKeys: {} };
 		resourceKeysByCpuFile[cpuFileKey].resourceKeys.push(resourceKey);
 		resourceKeysByCpuFile[cpuFileKey].startstopKeys[resourceKey] = startstopKey;
 	});
@@ -1622,9 +1626,9 @@ const loadCpuUtilJsonCurrentPage = async (strymd) => {
 	// S3上のCPU使用率JSONをリージョンとNameタグ単位で処理する
 	cpuFileKeys.forEach((cpuFileKey) => {
 
-		const { accountId, tagNameKey, targetRegion, resourceKeys, startstopKeys } = resourceKeysByCpuFile[cpuFileKey];
+		const { account, tagNameKey, targetRegion, resourceKeys, startstopKeys } = resourceKeysByCpuFile[cpuFileKey];
 
-		loadCpuUtilForLocalYmdRegion(strymd, tagNameKey, targetRegion, accountId)
+		loadCpuUtilForLocalYmdRegion(strymd, tagNameKey, targetRegion, account)
 		.then((cpuDataGroup) => {
 			if(!$('#chk_cpu_util').prop('checked')) return;
 
@@ -1826,11 +1830,11 @@ const findEc2ComputerInfo = (instanceid, tagname, opt = {}) => {
 	const apiFilt = (instanceid) ? ['instance-id', instanceid] : ['tag:Name', tagname];
 	const useStoredDescribe = !!(opt.localYmd || opt.storedYmd);
 	const targetRegions = opt.regionName ? regions.filter(region => region.id === opt.regionName) : ec2rdsTargetRegions();
-	const rootUrl = accountUrlRoot(opt.accountId || accNo);
-	const accountId = opt.accountId || accNo;
+	const account = opt.account || accounts[opt.accountIndex] || currentAccount;
+	const rootUrl = accountUrlRoot(account);
 
 	return Promise.all(targetRegions.map(region =>
-		(opt.storedYmd ? fetchStoredDescribeByStoredYmd(opt.storedYmd, 'ec2', region.id, accountId, rootUrl) : (useStoredDescribe ? fetchStoredDescribe(opt.localYmd, 'ec2', region.id, accountId, rootUrl) : util.fetch( rootUrl + 'api/?api=ec2:describe_instances&arg=%7b%22Filters%22:%5b%7b%22Name%22:%22' + apiFilt[0] + '%22,%22Values%22:%5b%22' + apiFilt[1] + '%22%5d%7d%5d%7d&' + util.cacheParam(3600) + '&region=' + encodeURIComponent(region.id) )))
+		(opt.storedYmd ? fetchStoredDescribeByStoredYmd(opt.storedYmd, 'ec2', region.id, account, rootUrl) : (useStoredDescribe ? fetchStoredDescribe(opt.localYmd, 'ec2', region.id, account, rootUrl) : util.fetch( accountApiUrl(account, rootUrl) + '?api=ec2:describe_instances&arg=%7b%22Filters%22:%5b%7b%22Name%22:%22' + apiFilt[0] + '%22,%22Values%22:%5b%22' + apiFilt[1] + '%22%5d%7d%5d%7d&' + util.cacheParam(3600) + '&region=' + encodeURIComponent(region.id) )))
 		.then(data => useStoredDescribe ? normalizeStoredEc2DescribeInstances(data) : (data.Reservations || []).flatMap(reservation => reservation.Instances || []))
 	)).then((results) => {
 		const instances = results.flat();
@@ -1841,10 +1845,10 @@ const findEc2ComputerInfo = (instanceid, tagname, opt = {}) => {
 const findRdsComputerInfo = (instanceid, tagname, opt = {}) => {
 	const targetRegions = opt.regionName ? regions.filter(region => region.id === opt.regionName) : ec2rdsTargetRegions();
 	const useStoredDescribe = !!(opt.localYmd || opt.storedYmd);
-	const rootUrl = accountUrlRoot(opt.accountId || accNo);
-	const accountId = opt.accountId || accNo;
+	const account = opt.account || accounts[opt.accountIndex] || currentAccount;
+	const rootUrl = accountUrlRoot(account);
 	return Promise.all(targetRegions.map(region =>
-		(opt.storedYmd ? fetchStoredDescribeByStoredYmd(opt.storedYmd, 'rds', region.id, accountId, rootUrl) : (useStoredDescribe ? fetchStoredDescribe(opt.localYmd, 'rds', region.id, accountId, rootUrl) : util.fetch( rootUrl + 'api/?api=rds:describe_db_instances&simpletag&select=DBInstanceIdentifier:DBInstanceClass:TagList&' + util.cacheParam(3600) + '&region=' + encodeURIComponent(region.id) )))
+		(opt.storedYmd ? fetchStoredDescribeByStoredYmd(opt.storedYmd, 'rds', region.id, account, rootUrl) : (useStoredDescribe ? fetchStoredDescribe(opt.localYmd, 'rds', region.id, account, rootUrl) : util.fetch( accountApiUrl(account, rootUrl) + '?api=rds:describe_db_instances&simpletag&select=DBInstanceIdentifier:DBInstanceClass:TagList&' + util.cacheParam(3600) + '&region=' + encodeURIComponent(region.id) )))
 		.then(data => data.DBInstances || [])
 	)).then((results) => {
 		const dbInstances = results.flat();
@@ -1955,10 +1959,10 @@ var onLoad = function(fHtml)
 	mystat.fromHtml = fHtml;
 	let cpuGraphWH = { w: 740, h: 220 };
 
-	document.querySelector('#TitleInstance').innerText = ['EC2', ...(acc[accNo]?.additionalService || [])].join("/");
+	document.querySelector('#TitleInstance').innerText = ['EC2', ...(currentAccount.additionalService || [])].join("/");
 	renderDemoMessage();
 
-	document.title = (acc[accNo].accountName || accNo) + ' ' + document.title;
+	document.title = accountName(currentAccount, currentAccountIndex) + ' ' + document.title;
 
 	// index.html固有の初期化1
 	if(mystat.fromHtml === mystat.fromPattern[0]){
@@ -2031,12 +2035,12 @@ var onLoad = function(fHtml)
 			let tagname;
 			let graphYMD;
 			let graphAgo;
-			let graphAccountId = accNo;
+			let graphAccountIndex = currentAccountIndex;
 
 			if(mystat.fromHtml === mystat.fromPattern[0]){
 				id = event.target.parentElement.dataset.instanceid;
 				tagname = event.target.parentElement.dataset.tagname;
-				graphAccountId = event.target.parentElement.dataset.account || accNo;
+				graphAccountIndex = event.target.parentElement.dataset.accountIndex || currentAccountIndex;
 				graphYMD = cloudWatchDateRange(mystat.targetDate.getFullYear(), mystat.targetDate.getMonth(), mystat.targetDate.getDate());
 				graphAgo = (mystat.now - graphYMD.agoBase) / 1000 / 60 / 60 / 24;
 			}else{
@@ -2050,7 +2054,8 @@ var onLoad = function(fHtml)
 			util.writeHtml(cpuGraph, '<br><span class="b">Loading...</span>');
 
 			let cwPeriod = (graphAgo >= 63) ? '3600' : '300';   // 63日経過したらデータが3600秒に丸まるのでリクエストも合わせる
-			const cwUrl = buildCloudWatchCpuUrl(id, tagname, graphYMD, cwPeriod, cpuGraphWH.w, cpuGraphWH.h, accountUrlRoot(graphAccountId));
+			const graphAccount = accounts[graphAccountIndex] || currentAccount;
+			const cwUrl = buildCloudWatchCpuUrl(id, tagname, graphYMD, cwPeriod, cpuGraphWH.w, cpuGraphWH.h, graphAccount, accountUrlRoot(graphAccount));
 
 			util.fetch(
 				cwUrl
