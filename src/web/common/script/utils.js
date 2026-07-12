@@ -38,14 +38,14 @@ if(!window.appConfig){
 	throw new Error('config.js must be loaded before utils.js');
 }
 
-const normalizeAccountConfigs = (accountsConfig) => Object.fromEntries((accountsConfig || []).map((accountConfig, index) => {
+const normalizeAccountConfigs = (accountsConfig) => (accountsConfig || []).map((accountConfig) => {
 	const config = accountConfig || {};
 	// additionalService: 未定義なら ['RDS']、配列なら空文字要素を除去（[] や [""] は「追加サービスなし」）
 	const additionalService = Array.isArray(config.additionalService)
 		? config.additionalService.map((value) => String(value).trim()).filter((value) => value !== '')
 		: ['RDS'];
-	return [String(index), { ...config, additionalService }];
-}));
+	return { ...config, additionalService };
+});
 window.normalizeAccountConfigs = normalizeAccountConfigs;
 
 const demoNow = window.appConfig.demo?.now || null;
@@ -58,13 +58,13 @@ const createLocalStorageKey = (key) => reversePath[1] + '-' + reversePath[0].spl
 const urlHome = document.currentScript.src.replace(/(.*)\:\/\/(.*?)\/(.*)\/(.*?)\/(.*)$/, '/$3');
 
 const requestedAccountForRegions = new URLSearchParams(window.location.search).get('account');
-const accountConfigsForRegions = normalizeAccountConfigs(window.appConfig.accounts);
-const defaultAccountIdForRegions = Object.keys(accountConfigsForRegions)[0] || '';
-const accountConfigForRegions = accountConfigsForRegions[requestedAccountForRegions] || accountConfigsForRegions[defaultAccountIdForRegions] || {};
-const configuredRegionIds = Object.values(accountConfigsForRegions).flatMap(accountConfig => Array.isArray(accountConfig.regions) ? accountConfig.regions : []);
+const accountsForRegions = normalizeAccountConfigs(window.appConfig.accounts);
+const defaultAccountIndexForRegions = accountsForRegions[0] ? '0' : '';
+const accountForRegions = accountsForRegions[requestedAccountForRegions] || accountsForRegions[defaultAccountIndexForRegions] || {};
+const configuredRegionIds = accountsForRegions.flatMap(account => Array.isArray(account.regions) ? account.regions : []);
 const ownRegionId = (() => {
-	const ownRegions = Array.isArray(accountConfigForRegions.regions) ? accountConfigForRegions.regions : [];
-	return ownRegions[accountConfigForRegions.instanceRegionId || 0] || ownRegions[0] || util.config.regions[window.appConfig.defaultRegionId]?.id || util.config.regions[0]?.id || '';
+	const ownRegions = Array.isArray(accountForRegions.regions) ? accountForRegions.regions : [];
+	return ownRegions[accountForRegions.instanceRegionId || 0] || ownRegions[0] || util.config.regions[window.appConfig.defaultRegionId]?.id || util.config.regions[0]?.id || '';
 })();
 const availableRegionIds = [...new Set([...configuredRegionIds, ownRegionId].filter(v => v))];
 const availableRegions = (availableRegionIds.length > 0 ? availableRegionIds : util.config.regions.map(region => region.id))
@@ -92,7 +92,7 @@ let callbackOnClickReloadTableButton = () => {};
 // 選択されたリソース(EC2/RDS)のValue
 let selectedSvcVal = '';
 const configuredServiceOptionLabels = Object.assign({}, ...window.appConfig.labels.serviceOptions.filter(opt => opt && typeof opt === 'object'));
-const hasRdsAccount = Object.values(accountConfigsForRegions).some(accountConfig => (accountConfig.additionalService || []).includes('RDS'));
+const hasRdsAccount = accountsForRegions.some(account => (account.additionalService || []).includes('RDS'));
 const serviceOptions = hasRdsAccount ? [
 	{ optValue: 'ec2Y_rdsY', display: configuredServiceOptionLabels.ec2Y_rdsY },
 	{ optValue: 'ec2Y_rdsN', display: 'EC2' },
