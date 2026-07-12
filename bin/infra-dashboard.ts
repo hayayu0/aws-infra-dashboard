@@ -13,8 +13,8 @@ const additionalServiceContext = app.node.tryGetContext('additionalService');
 const additionalService = typeof additionalServiceContext === 'string'
   ? additionalServiceContext.split(',').map((item) => item.trim()).filter((item) => item !== '')
   : ['RDS'];
-const regionalRegion = readStringContext(app, 'region', 'ap-northeast-1');
-const regions = uniqueNonEmpty([regionalRegion, ...readStringListContext(app, 'otherRegions')]);
+const mainRegion = readStringContext(app, 'mainRegion', 'ap-northeast-1');
+const regions = uniqueNonEmpty([mainRegion, ...readStringListContext(app, 'otherRegions')]);
 const timeZone = readStringContext(app, 'timeZone', 'Asia/Tokyo');
 
 new LocalStack(app, `${toolNamePrefix}-local`, {
@@ -22,11 +22,11 @@ new LocalStack(app, `${toolNamePrefix}-local`, {
   subDir,
   accountDisplayName,
   additionalService,
-  regionalRegion,
+  mainRegion,
   regions,
   timeZone,
   env: {
-    region: regionalRegion,
+    region: mainRegion,
   },
 });
 

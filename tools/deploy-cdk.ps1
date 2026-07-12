@@ -5,7 +5,7 @@
     [ValidatePattern('^[A-Za-z0-9,]*$')]
     [string]$AdditionalService = "RDS",
     [string]$AccountDisplayName = "",
-    [string]$RegionalRegion = "ap-northeast-1",
+    [string]$MainRegion = "ap-northeast-1",
     [string]$OtherRegions = "",
     [string]$TimeZone = "Asia/Tokyo",
     [string]$TagCategory = "Env",
@@ -240,7 +240,7 @@ function Get-DeployRegions {
     return $regions
 }
 
-$deployRegions = Get-DeployRegions -PrimaryRegion $RegionalRegion -AdditionalRegions $OtherRegions
+$deployRegions = Get-DeployRegions -PrimaryRegion $MainRegion -AdditionalRegions $OtherRegions
 
 $deployArgs = @(
     "cdk",
@@ -262,7 +262,7 @@ $deployArgs += @(
     "--context",
     "accountDisplayName=$resolvedAccountDisplayName",
     "--context",
-    "region=$RegionalRegion",
+    "mainRegion=$MainRegion",
     "--context",
     "otherRegions=$OtherRegions",
     "--context",
@@ -270,10 +270,10 @@ $deployArgs += @(
 )
 Invoke-Cdk $deployArgs
 
-$bucket = Get-StackOutput -Stack $localStackName -Region $RegionalRegion -OutputKey "ToolBucketName"
+$bucket = Get-StackOutput -Stack $localStackName -Region $MainRegion -OutputKey "ToolBucketName"
 $lambdaFunctionUrl = aws @awsProfileArgs lambda get-function-url-config `
     --function-name "$ToolNamePrefix-describe-api" `
-    --region $RegionalRegion `
+    --region $MainRegion `
     --query "FunctionUrl" `
     --output text
 if ($LASTEXITCODE -ne 0) {
@@ -290,7 +290,7 @@ if (!$lambdaFunctionUrl -or $lambdaFunctionUrl -eq "None") {
 
 $globalParameters = @(
     "ToolBucketName=$bucket",
-    "ToolBucketRegion=$RegionalRegion",
+    "ToolBucketRegion=$MainRegion",
     "LambdaFunctionUrl=$lambdaFunctionUrl",
     "EnableIpAllowList=$EnableIpAllowList",
     "AllowedIpV4Cidr=$AllowedIpV4Cidr",
@@ -323,7 +323,7 @@ $globalDeployArgs += @(
     "--context",
     "accountDisplayName=$resolvedAccountDisplayName",
     "--context",
-    "region=$RegionalRegion",
+    "mainRegion=$MainRegion",
     "--context",
     "otherRegions=$OtherRegions",
     "--context",
@@ -368,7 +368,7 @@ $deployArgs += @(
     "--context",
     "accountDisplayName=$resolvedAccountDisplayName",
     "--context",
-    "region=$RegionalRegion",
+    "mainRegion=$MainRegion",
     "--context",
     "otherRegions=$OtherRegions",
     "--context",
@@ -409,6 +409,6 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Deploy complete."
 Write-Host "GlobalStack: $globalStackName (us-east-1)"
-Write-Host "LocalStack: $localStackName ($RegionalRegion)"
+Write-Host "LocalStack: $localStackName ($MainRegion)"
 Write-Host "Regions: $($deployRegions -join ',')"
 Write-Host "ToolUrl: $toolUrl"

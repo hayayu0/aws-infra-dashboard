@@ -5,7 +5,7 @@ TOOL_NAME_PREFIX="infra-dashboard"
 SUB_DIR=""
 ADDITIONAL_SERVICE="RDS"
 ACCOUNT_DISPLAY_NAME=""
-REGIONAL_REGION="ap-northeast-1"
+MAIN_REGION="ap-northeast-1"
 OTHER_REGIONS=""
 TIME_ZONE="Asia/Tokyo"
 TAG_CATEGORY="Env"
@@ -27,7 +27,7 @@ Options:
   --sub-dir DIR                 S3 sub directory ([A-Za-z0-9,_#-]+). Default: empty
   --additional-service CSV      Comma-separated services other than EC2 ([A-Za-z0-9,]). Default: RDS. Specify "" if none
   --account-display-name NAME   Default: アカ1
-  --regional-region REGION      Default: ap-northeast-1
+  --main-region REGION          Default: ap-northeast-1
   --other-regions REGIONS       Comma-separated additional regions. Default: empty
   --time-zone TIME_ZONE         Default: Asia/Tokyo
   --tag-category TAG_KEY        Default: Env
@@ -48,7 +48,7 @@ while [ "$#" -gt 0 ]; do
         --sub-dir) SUB_DIR="$2"; shift 2 ;;
         --additional-service) ADDITIONAL_SERVICE="$2"; shift 2 ;;
         --account-display-name) ACCOUNT_DISPLAY_NAME="$2"; shift 2 ;;
-        --regional-region) REGIONAL_REGION="$2"; shift 2 ;;
+        --main-region) MAIN_REGION="$2"; shift 2 ;;
         --other-regions) OTHER_REGIONS="$2"; shift 2 ;;
         --time-zone) TIME_ZONE="$2"; shift 2 ;;
         --tag-category) TAG_CATEGORY="$2"; shift 2 ;;
@@ -114,7 +114,7 @@ add_region() {
     DEPLOY_REGIONS+=("$region")
 }
 
-add_region "$REGIONAL_REGION"
+add_region "$MAIN_REGION"
 if [ -n "$OTHER_REGIONS" ]; then
     IFS=',' read -r -a additional_regions <<< "$OTHER_REGIONS"
     for region in "${additional_regions[@]}"; do
@@ -270,14 +270,14 @@ npx cdk deploy "$LOCAL_STACK_NAME" \
     --context "subDir=$SUB_DIR" \
     --context "additionalService=$ADDITIONAL_SERVICE" \
     --context "accountDisplayName=$RESOLVED_ACCOUNT_DISPLAY_NAME" \
-    --context "region=$REGIONAL_REGION" \
+    --context "mainRegion=$MAIN_REGION" \
     --context "otherRegions=$OTHER_REGIONS" \
     --context "timeZone=$TIME_ZONE"
 
-bucket="$(get_stack_output "$LOCAL_STACK_NAME" "$REGIONAL_REGION" ToolBucketName)"
+bucket="$(get_stack_output "$LOCAL_STACK_NAME" "$MAIN_REGION" ToolBucketName)"
 lambda_function_url="$(aws "${AWS_PROFILE_ARGS[@]}" lambda get-function-url-config \
     --function-name "${TOOL_NAME_PREFIX}-describe-api" \
-    --region "$REGIONAL_REGION" \
+    --region "$MAIN_REGION" \
     --query "FunctionUrl" \
     --output text)"
 
@@ -295,7 +295,7 @@ npx cdk deploy "$GLOBAL_STACK_NAME" \
     "${CDK_PROFILE_ARGS[@]}" \
     --require-approval never \
     --parameters "${GLOBAL_STACK_NAME}:ToolBucketName=$bucket" \
-    --parameters "${GLOBAL_STACK_NAME}:ToolBucketRegion=$REGIONAL_REGION" \
+    --parameters "${GLOBAL_STACK_NAME}:ToolBucketRegion=$MAIN_REGION" \
     --parameters "${GLOBAL_STACK_NAME}:LambdaFunctionUrl=$lambda_function_url" \
     --parameters "${GLOBAL_STACK_NAME}:EnableIpAllowList=$ENABLE_IP_ALLOW_LIST" \
     --parameters "${GLOBAL_STACK_NAME}:AllowedIpV4Cidr=$ALLOWED_IP_V4_CIDR" \
@@ -304,7 +304,7 @@ npx cdk deploy "$GLOBAL_STACK_NAME" \
     --context "subDir=$SUB_DIR" \
     --context "additionalService=$ADDITIONAL_SERVICE" \
     --context "accountDisplayName=$RESOLVED_ACCOUNT_DISPLAY_NAME" \
-    --context "region=$REGIONAL_REGION" \
+    --context "mainRegion=$MAIN_REGION" \
     --context "otherRegions=$OTHER_REGIONS" \
     --context "timeZone=$TIME_ZONE"
 
@@ -335,7 +335,7 @@ npx cdk deploy "$LOCAL_STACK_NAME" \
     --context "subDir=$SUB_DIR" \
     --context "additionalService=$ADDITIONAL_SERVICE" \
     --context "accountDisplayName=$RESOLVED_ACCOUNT_DISPLAY_NAME" \
-    --context "region=$REGIONAL_REGION" \
+    --context "mainRegion=$MAIN_REGION" \
     --context "otherRegions=$OTHER_REGIONS" \
     --context "timeZone=$TIME_ZONE"
 
@@ -359,6 +359,6 @@ aws "${AWS_PROFILE_ARGS[@]}" cloudfront create-invalidation \
 
 echo "Deploy complete."
 echo "GlobalStack: $GLOBAL_STACK_NAME (us-east-1)"
-echo "LocalStack: $LOCAL_STACK_NAME ($REGIONAL_REGION)"
+echo "LocalStack: $LOCAL_STACK_NAME ($MAIN_REGION)"
 echo "Regions: ${DEPLOY_REGIONS[*]}"
 echo "ToolUrl: $tool_url"

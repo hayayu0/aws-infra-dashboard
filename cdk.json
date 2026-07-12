@@ -2,7 +2,7 @@
   "app": "npx tsx bin/infra-dashboard.ts",
   "context": {
     "toolNamePrefix": "infra-dashboard",
-    "region": "ap-northeast-1",
+    "mainRegion": "ap-northeast-1",
     "timeZone": "Asia/Tokyo"
   }
 }

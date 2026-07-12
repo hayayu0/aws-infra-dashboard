@@ -13,7 +13,7 @@ export interface LocalStackProps extends cdk.StackProps {
   subDir: string;
   accountDisplayName: string;
   additionalService: string[];
-  regionalRegion: string;
+  mainRegion: string;
   regions: string[];
   timeZone: string;
 }
@@ -154,7 +154,7 @@ export class LocalStack extends cdk.Stack {
         variables: {
           source_cidr_list: '0.0.0.0/0 ::/0',
           s3_bucket: bucket.ref,
-          default_region: props.regionalRegion,
+          default_region: props.mainRegion,
           SUBDIR: props.subDir,
         },
       },
