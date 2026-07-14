@@ -119,10 +119,29 @@ export class LocalStack extends cdk.Stack {
         ],
       },
       managedPolicyArns: [
-        'arn:aws:iam::aws:policy/ReadOnlyAccess',
         'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
       ],
       policies: [
+        {
+          policyName: 'aws-api-read-access',
+          policyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: [
+                  'ec2:DescribeInstances',
+                  'ec2:DescribeInstanceStatus',
+                  'ec2:DescribeVpcs',
+                  'rds:DescribeDBInstances',
+                  'cloudwatch:GetMetricWidgetImage',
+                  'cloudwatch:GetMetricData',
+                ],
+                Resource: '*',
+              },
+            ],
+          },
+        },
         {
           policyName: 'cache-bucket-access',
           policyDocument: {
@@ -158,7 +177,7 @@ export class LocalStack extends cdk.Stack {
           SUBDIR: props.subDir,
         },
       },
-      functionName: `${props.toolNamePrefix}-describe-api`,
+      functionName: `${props.toolNamePrefix}-describe-instance-api`,
       handler: 'index.lambda_handler',
       memorySize: 256,
       role: role.attrArn,

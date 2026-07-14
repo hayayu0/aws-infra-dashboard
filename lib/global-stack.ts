@@ -261,7 +261,7 @@ export class GlobalStack extends cdk.Stack {
       }),
     });
     new cdk.CfnOutput(this, 'SampleApiUrl', {
-      value: cdk.Fn.sub('https://${DomainName}/api?api=ec2:describe_availability_zones', {
+      value: cdk.Fn.sub('https://${DomainName}/api?api=ec2:describe_vpcs', {
         DomainName: distribution.attrDomainName,
       }),
     });

@@ -272,7 +272,7 @@ Invoke-Cdk $deployArgs
 
 $bucket = Get-StackOutput -Stack $localStackName -Region $MainRegion -OutputKey "ToolBucketName"
 $lambdaFunctionUrl = aws @awsProfileArgs lambda get-function-url-config `
-    --function-name "$ToolNamePrefix-describe-api" `
+    --function-name "$ToolNamePrefix-describe-instance-api" `
     --region $MainRegion `
     --query "FunctionUrl" `
     --output text

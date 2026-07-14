@@ -2,8 +2,8 @@
 # web browsers) and relaying responses back to them.
 # The function acts as an AWS API proxy.
 
-# Required IAM policies: ReadOnlyAccess, AWSLambdaBasicExecutionRole
-# Desired IAM policy: AmazonS3FullAccess (or your custom S3 policy)
+# Required IAM permissions are defined in lib/local-stack.ts.
+# The S3 cache requires s3:GetObject and s3:PutObject.
 
 # Sample Test Event JSON
 '''
@@ -14,8 +14,8 @@
         }
     },
     "queryStringParameters": {
-        "api": "ec2:describe_network_interfaces",
-        "select": "NetworkInterfaceId:PrivateIpAddresses..PrivateIpAddress",
+        "api": "ec2:describe_vpcs",
+        "select": "VpcId:Tags",
         "cache": "600"
     }
 }
@@ -61,7 +61,7 @@ def validate_url_params(params):
         return None, 'Bad Request'
 
     if not re.match(r'[a-z][a-z0-9_\-]{1,32}\:(describe|list|get)_[a-z0-9_]{1,60}$', params['api']):
-        return None, 'Invalid api parameter. example: api=ec2:describe_subnets'
+        return None, 'Invalid api parameter. example: api=ec2:describe_vpcs'
 
     params.setdefault('region', os.getenv('default_region', 'ap-northeast-1'))
 

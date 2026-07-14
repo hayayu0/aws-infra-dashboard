@@ -1165,7 +1165,7 @@ $(function(){
 				if(document.querySelector('.HeaderControlBlock')){
 					const tagnameFilterExampleOptions = [tagnameFilter].filter(v => v).map(v => '<option value="' + util.escapeHTML(v) + '">').join('');
 					$('.HeaderControlBlock').prepend(
-						'<span class="spR defcol nowrap">Nameタグフィルター</span><input type="text" id="tagname_filter_textbox" list="tagname_filter_example">' + 
+						'<span class="spR lightcol nowrap">Nameタグフィルター</span><input type="text" id="tagname_filter_textbox" list="tagname_filter_example">' +
 						'<datalist id="tagname_filter_example">' + tagnameFilterExampleOptions + '</datalist>'
 					);
 

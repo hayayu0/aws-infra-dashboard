@@ -276,7 +276,7 @@ npx cdk deploy "$LOCAL_STACK_NAME" \
 
 bucket="$(get_stack_output "$LOCAL_STACK_NAME" "$MAIN_REGION" ToolBucketName)"
 lambda_function_url="$(aws "${AWS_PROFILE_ARGS[@]}" lambda get-function-url-config \
-    --function-name "${TOOL_NAME_PREFIX}-describe-api" \
+    --function-name "${TOOL_NAME_PREFIX}-describe-instance-api" \
     --region "$MAIN_REGION" \
     --query "FunctionUrl" \
     --output text)"

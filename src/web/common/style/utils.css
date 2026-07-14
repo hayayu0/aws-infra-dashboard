@@ -40,13 +40,6 @@ body{
 .hovUL:hover{
   text-decoration:underline;
 }
-.urllink{
-  cursor:pointer;
-}
-.urllink:hover{
-  text-decoration:underline;
-}
-
 .maruButton {
   border-radius:3px;
   margin:1px;
@@ -61,6 +54,7 @@ body{
 
 .defcol{ color: #333; }
 .defcol.dark{ color: #ededed; }
+.lightcol{ color: #ededed; }
 
 .red{ color:#ff4040; }
 .red.dark{ color:#f55; }
@@ -152,15 +146,9 @@ td.dark .spanLink{ color:#7b7bff; }
 .dt-button-info{
   color:#000055;
 }
-.dataTables_paginate.dark{
-  background-color:#fafafa;
-}
-
 table.dataTable { font-size: 12px; }
 
 table.dataTable thead th{ white-space:nowrap; padding-left:1px !important; padding-right:1px !important; margin:0; }
-
-table.dataTable thead th.padLRsml{ padding:0 10px; }
 
 table.dataTable thead th.padLR{ padding:0 20px; }
 
@@ -177,10 +165,10 @@ table.dataTable thead th.padLR{ padding:0 20px; }
   height: 40px;
   margin: 0;
   padding: 0;
-  background: linear-gradient(42deg, #050608 40%, #263238 66%);
+  background: linear-gradient(42deg, #23314d 40%, #202e3b 66%);
 }
 .HeaderBarBlock.dark{
-  background: linear-gradient(42deg, #030405 40%, #172227 66%);
+  background: linear-gradient(42deg, #122235 40%, #151f29 66%);
 }
 
 .HeaderBarBlock > .BarDisp{
@@ -209,22 +197,12 @@ table.dataTable thead th.padLR{ padding:0 20px; }
 #TitleInstance{
  margin-right: 2px;
 }
-#SelectAccount{
- color: #66e; background-color: #111; font-weight: bold; padding: 1px;
-}
-#SelectAccount:hover{
- color: #99f;
-}
 #MainBlock{
  position:relative; width:99%;
 }
 #loading, .LoadingText{
  font-weight:bold; font-size:20px; color:brown; margin:20px 40px;
 }
-#usage_description, .usage{
-  margin:10px 0; padding:10px 0 10px 5px; border: 1px solid gray;
-}
-
 #reloadTableButton{
   height:2.1em; font-size:1.4em; background-color:#e5e7eb; padding-left:20px; padding-right:20px; margin:2px 0 2px 0; color:#111827; border:1px solid #6b7280; border-radius:4px; cursor:pointer;
 }

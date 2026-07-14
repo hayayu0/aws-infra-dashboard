@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ja">
-<title>EC2/RDS status</title>
+<title>Infra Dashboard</title>
+<!-- PC専用のためviewport metaは指定しない -->
 <meta charset="utf-8">
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.6/css/buttons.dataTables.min.css">
@@ -29,13 +30,11 @@ let darkselector = '.spanLink, .statusCellRun, #dispDate';
 	<div class="HeaderTitleBlock flexcontainer"><!-- Header Title Block -->
 
 		<img class="Header_Icon" src="common/images/icon_infra_dashboard_top.png" style="width: 24px; height: 24px;">
-		<div id="Title" class="TitleText">Infra Dashboard (<span id="TitleInstance"></span>)稼働状況</div>
-		<div id="Other_Account_Link"></div>
+		<div id="Title">Infra Dashboard (<span id="TitleInstance"></span>)稼働状況</div>
 	</div>
 
 	<div class="HeaderControlBlock flexcontainer"><!-- Header Control Block -->
 
-		<div class="TopLink"></div>
 		<div><span class="ToolOptions" data-region="yes" style="display:none"></span></div>
 		<div id="darkbtn"></div>
 
@@ -51,11 +50,11 @@ let darkselector = '.spanLink, .statusCellRun, #dispDate';
 		<span class="sp"></span>
 		<span id="SelSvcLabel"></span>
 
-		<span id="sel_oldday_title">日付：</span>
+		<span>日付：</span>
 		<button class="dayButton maruButton" data-olddate="minus">&lt;-1日</button>
 		<div id="sel_oldday_block" class="inblock"></div>
 		<button class="dayButton maruButton" data-olddate="plus">+1日&gt;</button>
-		<button id="btn_today" class="dayButton maruButton" data-olddate="today"> 今日 </button>
+		<button class="dayButton maruButton" data-olddate="today"> 今日 </button>
 
 		<span class="sp"></span><span id="SelCategoryLabel"></span>
 
@@ -63,7 +62,6 @@ let darkselector = '.spanLink, .statusCellRun, #dispDate';
 
 		<span id="ColumnVisibleChecks">列ON/OFF：</span>
 		
-
 		<div id="DateHanrei">
 			<div id="dispDate"><span> / / ( )</span></div>
 			<span class="sp"></span>

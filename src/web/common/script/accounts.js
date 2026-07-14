@@ -14,12 +14,6 @@ const requestedDisplayAccounts = (new URLSearchParams(window.location.search).ge
 	.filter(v => v && visibleAccountEntries.some(([index]) => index === v));
 let selectedAccountIndexes = requestedDisplayAccounts.length > 0 ? [...new Set(requestedDisplayAccounts)] : visibleAccountEntries.map(([index]) => index);
 
-const jumptoOtherAccount = (toAccountIndex) => {
-	const currentSearchParams = new URLSearchParams(location.search);
-	currentSearchParams.set('account', toAccountIndex);
-	location.href = location.pathname + '?' + currentSearchParams.toString().replace(/%2C/g, ',');
-}
-
 const accountDisplayText = () => selectedAccountIndexes.map(index => accountLabel(accounts[index], index)).join(', ');
 const syncSelectedAccountCheckboxes = () => {
 	document.querySelectorAll('.sel_accounts_chk').forEach((checkbox) => {
@@ -45,18 +39,11 @@ window.addEventListener('pageshow', (event) => {
 		util.writeHtml(iconContainer, currentAccount.icon);
 	}
 
-	const accountSelectHtml = (entries, selectedValue, firstOptionHtml = '') => {
-		const optionHtml = entries.map(([index, account]) => `<option value="${index}"${index === selectedValue ? ' selected' : ''}>${accountLabel(account, index)}`).join('');
-		return '<select id="SelectAccount" onChange="jumptoOtherAccount(this.value);">' + firstOptionHtml + optionHtml + '</select>';
-	};
-
 	const accountAnchor = document.querySelector('#account_disp_anchor');
 	if(accountAnchor){
 		if(accounts.length <= 1){
 			util.writeHtml(accountAnchor, '');
 			$('#AccountOptionBox').remove();
-			const titleLinkContainer = document.querySelector('#Other_Account_Link');
-			if(titleLinkContainer) util.writeHtml(titleLinkContainer, '');
 			return;
 		}
 
@@ -94,24 +81,6 @@ window.addEventListener('pageshow', (event) => {
 				$('#AccountOptionBox').removeClass('fadeIn');
 			});
 		}
-		const titleLinkContainer = document.querySelector('#Other_Account_Link');
-		if(titleLinkContainer) util.writeHtml(titleLinkContainer, '');
 		return;
-	}
-
-	const linkContainer = document.querySelector('#Other_Account_Link');
-	if(linkContainer){
-		if( new URLSearchParams(location.search).get(groupTagFilter.keyURL) === groupTagFilter.allValue || linkContainer.dataset.show === 'always'){
-			const otherAccountEntries = accountEntries.filter(([index, account]) => index !== currentAccountIndex && !account.hideDropDown);
-			if(otherAccountEntries.length === 0){
-				util.writeHtml(linkContainer, '');
-				return;
-			}
-
-			util.writeHtml(linkContainer, '' +
-				'<div style="margin: 3px 0 0 3em">' +
-				accountSelectHtml(otherAccountEntries, '', '<option selected>-- アカウント切替 --') +
-				'</div>');
-		}
 	}
 });

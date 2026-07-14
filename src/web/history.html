@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
-<title>History - EC2/RDS on/off</title>
+<title>History - Infra Dashboard</title>
+<!-- PC専用のためviewport metaは指定しない -->
 <meta charset="utf-8">
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.6/css/buttons.dataTables.min.css">
@@ -30,7 +31,7 @@ let darkselector = '.spanLink, .statusCellRun, #dispComputerInfo';
 
 		<img class="Header_Icon_Mini" src="common/images/historylink.png">
 		<div id="TitleAccountIcon"></div>
-		<div id="Title" class="TitleText"><span id="TitleInstance"></span>稼働履歴</div>
+		<div id="Title"><span id="TitleInstance"></span>稼働履歴</div>
 
 	</div>
 
@@ -62,8 +63,6 @@ let darkselector = '.spanLink, .statusCellRun, #dispComputerInfo';
 		</div>
 
 	</div>
-
-	<div id="loading"></div>
 
 	<div id="Main">
 		<table id="statTable" class="cell-border" width="100%" data-page-length="100"></table>
