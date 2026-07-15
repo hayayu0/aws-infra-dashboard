@@ -220,7 +220,7 @@ export class GlobalStack extends cdk.Stack {
 
     const distribution = new cdk.aws_cloudfront.CfnDistribution(this, 'ToolDistribution', {
       distributionConfig: {
-        comment: cdk.Fn.sub('${AWS::StackName} EC2/RDS Stat'),
+        comment: cdk.Fn.sub('${AWS::StackName} Infra Dashboard'),
         enabled: true,
         defaultRootObject: 'index.html',
         httpVersion: 'http2and3',

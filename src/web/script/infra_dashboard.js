@@ -1781,7 +1781,7 @@ const getDrawPageDate = (olddate) => {
 	case /^yesterday$/.test( olddate ):
 		return 1;
 	case /minus/.test( olddate ):
-		return Math.min(364, $('#sel_oldday_block > select').prop('selectedIndex') + 1);
+		return Math.min(mystat.maxAgo, $('#sel_oldday_block > select').prop('selectedIndex') + 1);
 	case /plus/.test( olddate ):
 		return Math.max(0, $('#sel_oldday_block > select').prop('selectedIndex') - 1);
 	}

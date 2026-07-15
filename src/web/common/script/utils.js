@@ -237,7 +237,7 @@ util.createDropdownDate = (selector, ago, maxago = 365) => {
     let oldday = new Date(_today.getFullYear(), _today.getMonth(), _today.getDate() - 1);
 	html += `<option value="1">昨日 ${oldday.getMonth()+1}/${oldday.getDate()}(${youbiArr.charAt(oldday.getDay())})`;
 
-	for(let n=2; n<maxago; n++){
+	for(let n=2; n<=maxago; n++){
 		oldday = new Date(_today.getFullYear(), _today.getMonth(), _today.getDate() - n);
 		html += `<option value="${n}">${n}日前 ${oldday.getMonth()+1}/${oldday.getDate()}(${youbiArr.charAt(oldday.getDay())})`;
 	}
@@ -778,7 +778,7 @@ util.IsGroupTagFilterOk = (grpVal) => {
 
 	let dispok = true;
 
-	if(!(groupTagFilter.value && groupTagFilter.value.indexOf(groupTagFilter.allValue) >= 0) && grpVal){
+	if(!(groupTagFilter.value && groupTagFilter.value.split(',').indexOf(groupTagFilter.allValue) >= 0) && grpVal){
 		if(!groupTagFilter.value){
 			dispok = false;
 		}else{
