@@ -18,9 +18,7 @@ window.appConfig = {
         legendRunning: "稼働中",
         legendImpaired: "システム異常",
         legendTerminated: "Terminated",
-        serviceOptions: [
-            { ec2Y_rdsY: 'EC2＆RDS' }
-        ]
+        serviceEc2AndRds: 'EC2＆RDS'
     },
 
     groupTagFilter: {

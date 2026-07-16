@@ -91,10 +91,9 @@ let callbackOnClickReloadTableButton = () => {};
 
 // 選択されたリソース(EC2/RDS)のValue
 let selectedSvcVal = '';
-const configuredServiceOptionLabels = Object.assign({}, ...window.appConfig.labels.serviceOptions.filter(opt => opt && typeof opt === 'object'));
 const hasRdsAccount = accountsForRegions.some(account => (account.additionalService || []).includes('RDS'));
 const serviceOptions = hasRdsAccount ? [
-	{ optValue: 'ec2Y_rdsY', display: configuredServiceOptionLabels.ec2Y_rdsY },
+	{ optValue: 'ec2Y_rdsY', display: window.appConfig.labels.serviceEc2AndRds },
 	{ optValue: 'ec2Y_rdsN', display: 'EC2' },
 	{ optValue: 'ec2N_rdsY', display: 'RDS' }
 ] : [
